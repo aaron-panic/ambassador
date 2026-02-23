@@ -2,11 +2,11 @@
 #include "ambassador.hxx"
 
 SDL_AppResult Ambassador::loop() {
-    uint64_t now = SDL_GetTicks();
+    u64 now = SDL_GetTicks();
     if (needUpdate(now)) update(now);
     return render();
 }
 
-void Ambassador::update(uint64_t now) {
+void Ambassador::update(u64 now) {
     m_lasttick = now;
 }
