@@ -3,8 +3,6 @@
 
 #include <iostream>
 
-const uint8_t Ambassador::TILE_SIZE = 50;
-
 Ambassador::Ambassador() {
     SDL_SetAppMetadata(
         amb::config::APP_TITLE,
@@ -54,8 +52,8 @@ bool Ambassador::needUpdate(uint64_t now) {
 
 void Ambassador::configureGrid(int width, int height) {
     std::cout << "Dimensions: " << width << " X " << height << std::endl;
-    m_viewport_row_sz = width / TILE_SIZE + 1;
-    m_viewport_col_sz = height / TILE_SIZE + 1;
+    m_viewport_row_sz = width / amb::game::TILE_SIZE + 1;
+    m_viewport_col_sz = height / amb::game::TILE_SIZE + 1;
 
     std::cout << "Grid Dimensions: " << m_viewport_row_sz << " X " << m_viewport_col_sz << std::endl;
 }

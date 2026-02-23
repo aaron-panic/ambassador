@@ -17,6 +17,10 @@ namespace config {
     extern const uint64_t UPDATE_SPEED;
 } // namespace amb::config
 
+namespace game {
+    extern const uint8_t TILE_SIZE;
+}
+
 } // namespace amb
 
 #endif

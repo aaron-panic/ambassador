@@ -17,7 +17,7 @@ const uint64_t amb::config::GAME_SPEED = 60; // (60 updates/sec)
 const uint64_t amb::config::UPDATE_SPEED = 1000 / GAME_SPEED;
 
 // game constants
-const uint8_t TILE_SIZE = 50;
+const uint8_t amb::game::TILE_SIZE = 50;
 
 // initalize static members
 SDL_Window* Ambassador::g_window = nullptr;

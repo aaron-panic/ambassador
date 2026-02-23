@@ -4,8 +4,8 @@
 SDL_AppResult Ambassador::loop() {
     uint64_t now = SDL_GetTicks();
     if (needUpdate(now)) update();
-    return render();
     m_lasttick = now;
+    return render();
 }
 
 void Ambassador::update() {
