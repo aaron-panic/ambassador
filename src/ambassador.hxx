@@ -22,7 +22,7 @@ public:
 
     SDL_AppResult event(SDL_Event* event);
     SDL_AppResult loop();
-    void update();
+    void update(uint64_t now);
     SDL_AppResult render();
 
     void configureGrid(int width, int height);
