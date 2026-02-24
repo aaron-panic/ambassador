@@ -1,13 +1,12 @@
-#include <cstdint>
 #include <SDL3/SDL.h>
 #include "ambassador.hxx"
 
 SDL_AppResult Ambassador::render() {
     if (!SDL_SetRenderDrawColor(
         g_renderer,
-        (uint8_t)255,
-        (uint8_t)0,
-        (uint8_t)0,
+        (u8)255,
+        (u8)0,
+        (u8)0,
         SDL_ALPHA_OPAQUE
     )) {
         SDL_Log("Renderer failed: %s", SDL_GetError());

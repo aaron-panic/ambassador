@@ -1,7 +1,7 @@
 #ifndef AMBASSADOR_HXX_INCLUDED
 #define AMBASSADOR_HXX_INCLUDED
 
-#include <cstdint>
+#include "amb_types.hxx"
 // #include <vector>
 #include <SDL3/SDL.h>
 
@@ -16,19 +16,19 @@ public:
 
     SDL_AppResult checkInit();
 
-    std::uint64_t last() { return m_lasttick; }
+    u64 last() { return m_lasttick; }
 
-    bool needUpdate(uint64_t now);
+    bool needUpdate(u64 now);
 
     SDL_AppResult event(SDL_Event* event);
     SDL_AppResult loop();
-    void update(uint64_t now);
+    void update(u64 now);
     SDL_AppResult render();
 
     void configureGrid(int width, int height);
 private:
     bool m_initErrors = false;
-    std::uint64_t m_lasttick = 0;
+    u64 m_lasttick = 0;
 
     int m_viewport_row_sz;
     int m_viewport_col_sz;

@@ -46,7 +46,7 @@ SDL_AppResult Ambassador::checkInit() {
     return (m_initErrors) ? SDL_APP_FAILURE : SDL_APP_CONTINUE;
 }
 
-bool Ambassador::needUpdate(uint64_t now) {
+bool Ambassador::needUpdate(u64 now) {
     return (last() + amb::config::UPDATE_SPEED <= now);
 }
 
