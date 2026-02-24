@@ -12,6 +12,7 @@ struct TextureDeleter {
     void operator()(SDL_Texture* t) { if (t) SDL_DestroyTexture(t); }
 };
 using TexturePtr = std::unique_ptr<SDL_Texture, TextureDeleter>;
+using Cell = u16;
 
 struct ImageRuntime {
     TexturePtr texture;
@@ -21,16 +22,14 @@ struct AtlasRuntime {
     std::vector<SDL_FRect> rects;
 };
 
-struct MapCellRuntime {
-    std::vector<u16> atlas_idx;
-};
-
 struct MapRuntime {
     u32 width;
     u32 height;
     u16 tile_width;
     u16 tile_height;
-    std::vector<MapCellRuntime> cells;
-}
+    std::vector<Cell> atlas_idx;
+};
+
+
 
 #endif
