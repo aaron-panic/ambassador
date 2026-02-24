@@ -1,7 +1,7 @@
 #ifndef VISUAL_LAYERS_HXX_INCLUDED
 #define VISUAL_LAYERS_HXX_INCLUDED
 
-#include "damb_format.hxx"
+#include "damb_runtime.hxx"
 
 class VisualLayer {
 
