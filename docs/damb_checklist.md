@@ -23,22 +23,22 @@
 ### 1.1 `src/damb_format.hxx`
 
 - [x] Fixed-width typedefs: `u8`, `u16`, `u32`, `u64`, `i32`
-- [ ] MAGIC = `"DATA-AMB"`
-- [ ] `DAMB_VERSION = 1`
-- [ ] `DAMB_HEADER_SIZE` constant
-- [ ] `TOC_ENTRY_SIZE` constant
-- [ ] 4CC chunk types: `IMAG`, `ATLS`, `MAPL`
-- [ ] `enum CompressionMethod`
-- [ ] `enum ImageFormat`
-- [ ] `enum MapEncoding`
-- [ ] `struct DambHeader`
-- [ ] `struct DambTocEntry`
-- [ ] `struct DambChunkHeader`
-- [ ] `struct DambChunkImagHeader`
-- [ ] `struct DambChunkAtlsHeader`
-- [ ] `struct DambAtlasRecordV1`
-- [ ] `struct DambChunkMaplHeader`
-- [ ] `struct DambMapCellV1`
+- [x] MAGIC = `"DATA-AMB"`
+- [x] `DAMB_VERSION = 1`
+- [x] `DAMB_HEADER_SIZE` constant
+- [x] `TOC_ENTRY_SIZE` constant
+- [x] 4CC chunk types: `IMAG`, `ATLS`, `MAPL`
+- [x] `enum CompressionMethod`
+- [x] `enum ImageFormat`
+- [x] `enum MapEncoding`
+- [x] `struct DambHeader`
+- [x] `struct DambTocEntry`
+- [x] `struct DambChunkHeader`
+- [x] `struct DambChunkImagHeader`
+- [x] `struct DambChunkAtlsHeader`
+- [x] `struct DambAtlasRecordV1`
+- [x] `struct DambChunkMaplHeader`
+- [x] `struct DambMapCellV1`
 - [ ] `constexpr Align8(u64)`
 - [ ] `static_assert(sizeof(DambTocEntry) == TOC_ENTRY_SIZE)`
 

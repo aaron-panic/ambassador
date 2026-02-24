@@ -1,5 +1,6 @@
 #include "config.hxx"
 #include "ambassador.hxx"
+#include "dataformat.hxx"
 
 // configuration definitions
 

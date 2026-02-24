@@ -2,6 +2,7 @@
 #define AMB_CONFIG_HXX_INCLUDED
 
 #include "amb_types.hxx"
+#include "dataformat.hxx"
 
 namespace amb{
 // configuration constants
