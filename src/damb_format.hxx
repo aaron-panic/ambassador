@@ -59,7 +59,7 @@ namespace amb::damb {
         u64 offset = 0;
         u64 size = 0;
         u64 uncompressed_size = 0;
-        u32 id = 0;
+        u16 id = 0;
         u32 flags = 0;
         u32 deps_count = 0;
         u32 crc32 = 0;

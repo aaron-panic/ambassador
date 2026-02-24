@@ -17,8 +17,8 @@ using TexturePtr = std::unique_ptr<SDL_Texture, TextureDeleter>;
 
 struct RuntimeImage {
     u16 id = 0;
-    u16 width = 0;
-    u16 height = 0;
+    u32 width = 0;
+    u32 height = 0;
 
     TexturePtr texture;
 
