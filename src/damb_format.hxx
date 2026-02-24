@@ -3,6 +3,8 @@
 
 #include "amb_types.hxx"
 
+#include <type_traits>
+
 namespace amb::damb {
     // Indentifier Classifications
     // ----------
@@ -52,6 +54,7 @@ namespace amb::damb {
         u8 reserved[26] = {};
     };
     static_assert(sizeof(Header) == HEADER_SIZE, "Header size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<Header>, "Header must be POD/trivially copyable.");
 
     // Table of Contents
     // ----------
@@ -68,6 +71,7 @@ namespace amb::damb {
         u8 reserved[4] = {};
     };
     static_assert(sizeof(TocEntry) == TOC_ENTRY_SIZE, "TOC size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<TocEntry>, "TocEntry must be POD/trivially copyable.");
 
     // Chunks
     // ----------
@@ -76,6 +80,7 @@ namespace amb::damb {
         u16 id = 0;
     } ChunkHeader;
     static_assert(sizeof(ChunkHeader) == CHUNK_HEADER_SIZE, "ChunkHeader size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<ChunkHeader>, "ChunkHeader must be POD/trivially copyable.");
 
     // Image Chunk
     // ----------
@@ -89,6 +94,7 @@ namespace amb::damb {
 
     };
     static_assert(sizeof(ImageChunkHeader) == IMAG_HEADER_SIZE, "ImageChunkHeader size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<ImageChunkHeader>, "ImageChunkHeader must be POD/trivially copyable.");
 
     // Atlas Chunk
     // ----------
@@ -107,6 +113,7 @@ namespace amb::damb {
         u32 name_str_offset = 0;
     };
     static_assert(sizeof(AtlasRecord) == ATLS_RECORD_SIZE, "AtlasRecord size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<AtlasRecord>, "AtlasRecord must be POD/trivially copyable.");
 
     struct AtlasChunkHeader {
         ChunkHeader header;
@@ -115,6 +122,7 @@ namespace amb::damb {
         u16 image_id = 0;
     };
     static_assert(sizeof(AtlasChunkHeader) == ATLS_HEADER_SIZE, "AtlasChunkHeader size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<AtlasChunkHeader>, "AtlasChunkHeader must be POD/trivially copyable.");
 
     // Map Layer Chunk
     // ----------
@@ -123,6 +131,7 @@ namespace amb::damb {
         u16 atlas_record_index = 0;
     };
     static_assert(sizeof(MapCell) == MAPCELL_SIZE, "MapCell size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<MapCell>, "MapCell must be POD/trivially copyable.");
 
     struct MapLayerChunkHeader {
         ChunkHeader header;
@@ -139,6 +148,7 @@ namespace amb::damb {
 
     };
     static_assert(sizeof(MapLayerChunkHeader) == MAPL_HEADER_SIZE, "MapLayerChunkHeader size does not match stated value.");
+    static_assert(std::is_trivially_copyable_v<MapLayerChunkHeader>, "MapLayerChunkHeader must be POD/trivially copyable.");
 
     constexpr u64 Align8(u64 sz) { return (sz + 7u) & ~u64{7}; }
     constexpr u64 PadTo8(u64 sz) { return Align8(sz) - sz; }
