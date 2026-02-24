@@ -262,7 +262,7 @@ struct RuntimeLayer {
     LayerId id{};
     u32 width = 0;
     u32 height = 0;
-    i32 z = 0;
+    i32 reserved_layer_order = 0;
 
     // compact per-cell references:
     std::vector<MapCellV1> cells; // row-major
