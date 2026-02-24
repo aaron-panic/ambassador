@@ -1,9 +1,10 @@
 #ifndef VISUAL_LAYERS_HXX_INCLUDED
 #define VISUAL_LAYERS_HXX_INCLUDED
 
+#include "renderable.hxx"
 #include "damb_runtime.hxx"
 
-class VisualLayer {
+class VisualLayer : public Renderable {
 
 };
 
