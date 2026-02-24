@@ -2,7 +2,6 @@
 #define DAMB_FORMAT_HXX_INCLUDED
 
 #include "amb_types.hxx"
-#include <vector>
 
 namespace amb::damb {
     // Indentifier Classifications
@@ -27,11 +26,11 @@ namespace amb::damb {
     constexpr u16 HEADER_SIZE = 64;
     constexpr u16 TOC_ENTRY_SIZE = 48;
     constexpr u16 CHUNK_HEADER_SIZE = 8;
-    constexpr u16 IMAG_HEADER_SIZE = 17;
+    constexpr u16 IMAG_HEADER_SIZE = 32;
     constexpr u16 ATLS_RECORD_SIZE = 24;
     constexpr u16 ATLS_HEADER_SIZE = 20;
     constexpr u16 MAPCELL_SIZE = 4;
-    constexpr u16 MAPL_HEADER_SIZE = 25;
+    constexpr u16 MAPL_HEADER_SIZE = 28;
     
     constexpr const char* CL_IMAGE = "IMAG";
     constexpr const char* CL_ATLAS = "ATLS";
@@ -86,8 +85,10 @@ namespace amb::damb {
         u32 width = 0;
         u32 height = 0;
         ImageFormat format = ImageFormat::png;
+        u8 reserved[7] = {};
 
     } ImageChunkHeader;
+    static_assert(sizeof(ImageChunkHeader) == IMAG_HEADER_SIZE, "ImageChunkHeader size does not match stated value.");
 
     // Atlas Chunk
     // ----------
@@ -105,15 +106,15 @@ namespace amb::damb {
         u32 name_str_offset = 0;
         u32 reserved = 0;
     } AtlasRecord;
+    static_assert(sizeof(AtlasRecord) == ATLS_RECORD_SIZE, "AtlasRecord size does not match stated value.");
 
     typedef struct AtlasChunkHeader {
         ChunkHeader header;
         u32 image_id = 0;
-        
         u32 flags = 0;
-        
         u32 asset_count = 0;
     } AtlasChunkHeader;
+    static_assert(sizeof(AtlasChunkHeader) == ATLS_HEADER_SIZE, "AtlasChunkHeader size does not match stated value.");
 
     // Map Layer Chunk
     // ----------
@@ -121,6 +122,7 @@ namespace amb::damb {
         u16 atlas_id = 0;
         u16 asset_index = 0;
     } MapCell;
+    static_assert(sizeof(MapCell) == MAPCELL_SIZE, "MapCell size does not match stated value.");
 
     typedef struct MapLayerChunkHeader {
         ChunkHeader header;
@@ -133,9 +135,13 @@ namespace amb::damb {
         u16 atlas_id = 0;
         MapEncoding encoding = MapEncoding::raw;
 
-        u16 reserved = 0;
+        u8 reserved[5] = {};
 
     } MapLayerChunkHeader;
+    static_assert(sizeof(MapLayerChunkHeader) == MAPL_HEADER_SIZE, "MapLayerChunkHeader size does not match stated value.");
+
+    constexpr u64 Align8(u64 sz) { return (sz + 7u) & ~u64{7}; }
+    constexpr u64 PadTo8(u64 sz) { return Align8(sz) - sz; }
 
 } // End namespace amb::damb
 

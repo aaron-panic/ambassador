@@ -39,8 +39,8 @@
 - [x] `struct DambAtlasRecordV1`
 - [x] `struct DambChunkMaplHeader`
 - [x] `struct DambMapCellV1`
-- [ ] `constexpr Align8(u64)`
-- [ ] `static_assert(sizeof(DambTocEntry) == TOC_ENTRY_SIZE)`
+- [x] `constexpr Align8(u64)`
+- [x] `static_assert(sizeof(DambTocEntry) == TOC_ENTRY_SIZE)`
 
 ### 1.2 `src/damb_runtime.hxx`
 
