@@ -17,7 +17,7 @@ add_library(libcore STATIC
 )
 
 add_library(libdata STATIC
-    src/data_map.cxx
+    src/scenedata.cxx
 )
 
 # Release Binary
@@ -31,6 +31,7 @@ add_executable(dambassador
 
 target_link_libraries(ambassador PRIVATE
     libcore
+    libdata
     SDL3::SDL3
     SDL3_image::SDL3_image
     zstd::libzstd_shared

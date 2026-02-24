@@ -9,36 +9,37 @@
 #include "amb_types.hxx"
 #include "damb_format.hxx"
 
-namespace amb::damb {
+namespace amb {
 struct TextureDeleter {
     void operator()(SDL_Texture* t) const { if (t) SDL_DestroyTexture(t); }
 };
 using TexturePtr = std::unique_ptr<SDL_Texture, TextureDeleter>;
 
-typedef struct RuntimeImage {
-    u32 id = 0;
-    u32 width = 0;
-    u32 height = 0;
+struct RuntimeImage {
+    u16 id = 0;
+    u16 width = 0;
+    u16 height = 0;
 
     TexturePtr texture;
 
-} RuntimeImage;
+};
 
-typedef struct RuntimeAtlas {
-    u32 id = 0;
-    u32 image_id = 0;
+struct RuntimeAtlas {
+    u16 id = 0;
+    u16 image_id = 0;
     std::vector<SDL_FRect> src_rects;
     std::vector<u32> flags;
-} RuntimeAtlas;
+};
 
-typedef struct RuntimeMapLayer {
-    u32 id = 0;
-    u32 width = 0;
-    u32 height = 0;
-    i32 z = 0;
+struct RuntimeMap {
+    u16 id = 0;
     u16 atlas_id = 0;
-    std::vector<MapCell> cells;
-} RuntimeMapLayer;
+    std::vector<amb::damb::MapCell> cells; // row major
+};
+
+using RuntimeImageVector = std::vector<RuntimeImage>;
+using RuntimeAtlasVector = std::vector<RuntimeAtlas>;
+using RuntimeMapVector = std::vector<RuntimeMap>;
 
 }
 #endif

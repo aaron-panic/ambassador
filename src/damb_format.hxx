@@ -25,7 +25,7 @@ namespace amb::damb {
     constexpr u16 VERSION = 1;
     constexpr u16 HEADER_SIZE = 64;
     constexpr u16 TOC_ENTRY_SIZE = 48;
-    constexpr u16 CHUNK_HEADER_SIZE = 8;
+    constexpr u16 CHUNK_HEADER_SIZE = 6;
     constexpr u16 IMAG_HEADER_SIZE = 32;
     constexpr u16 ATLS_RECORD_SIZE = 24;
     constexpr u16 ATLS_HEADER_SIZE = 20;
@@ -73,7 +73,7 @@ namespace amb::damb {
     // ----------
     typedef struct ChunkHeader {
         char type[4] = {};
-        u32 id = 0;
+        u16 id = 0;
     } ChunkHeader;
     static_assert(sizeof(ChunkHeader) == CHUNK_HEADER_SIZE, "ChunkHeader size does not match stated value.");
 
@@ -93,6 +93,7 @@ namespace amb::damb {
     // Atlas Chunk
     // ----------
     struct AtlasRecord {
+        u16 id = 0;
         u16 src_x = 0;
         u16 src_y = 0;
         u16 src_w = 0;
@@ -104,23 +105,22 @@ namespace amb::damb {
         i16 anchor_y = 0;
 
         u32 name_str_offset = 0;
-        u32 reserved = 0;
     };
     static_assert(sizeof(AtlasRecord) == ATLS_RECORD_SIZE, "AtlasRecord size does not match stated value.");
 
     struct AtlasChunkHeader {
         ChunkHeader header;
-        u32 image_id = 0;
         u32 flags = 0;
         u32 asset_count = 0;
+        u16 image_id = 0;
     };
     static_assert(sizeof(AtlasChunkHeader) == ATLS_HEADER_SIZE, "AtlasChunkHeader size does not match stated value.");
 
     // Map Layer Chunk
     // ----------
     struct MapCell {
-        u16 atlas_id = 0;
-        u16 asset_index = 0;
+        u16 id = 0;
+        u16 atlas_record_index = 0;
     };
     static_assert(sizeof(MapCell) == MAPCELL_SIZE, "MapCell size does not match stated value.");
 
