@@ -44,11 +44,10 @@
 
 ### 1.2 `src/damb_runtime.hxx`
 
-- [ ] using `ImageId`, `AtlasId`, `LayerId`
-- [ ] `struct RuntimeImage`
-- [ ] `struct RuntimeAtlas`
-- [ ] `struct MapCell`
-- [ ] `struct RuntimeLayer`
+- [x] `struct RuntimeImage`
+- [x] `struct RuntimeAtlas`
+- [x] `struct MapCell`
+- [x] `struct RuntimeLayer`
 - [ ] `struct RuntimeScene`
 - [ ] `RuntimeImage* FindImage(...)`
 - [ ] `RuntimeAtlas* FindAtlas(...)`
