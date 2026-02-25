@@ -1,5 +1,6 @@
 #include "dambassador.hxx"
 
+#include "utility_binary.hxx"
 #include "utility_parse.hxx"
 #include "utility_string.hxx"
 
@@ -8,7 +9,6 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 
 namespace amb {
     namespace {
@@ -18,13 +18,6 @@ namespace amb {
             map,
             rows,
         };
-
-        template <typename T>
-        void appendPod(std::vector<u8>& out, const T& pod) {
-            static_assert(std::is_trivially_copyable_v<T>, "appendPod requires POD types.");
-            const auto* begin = reinterpret_cast<const u8*>(&pod);
-            out.insert(out.end(), begin, begin + sizeof(T));
-        }
 
         void parseAtlasTileRecord(
             damb::AtlasRecord& record,
@@ -346,17 +339,17 @@ namespace amb {
         const std::vector<u8> image_bytes = readFileBytes(image_path);
 
         damb::ImageChunkHeader header {};
-        std::memcpy(header.header.type, damb::CL_IMAGE, 4);
+        std::memcpy(header.header.type, damb::CL_IMAGE, amb::data::CHUNK_TYPE_LENGTH);
         header.header.id = manifest.image.id;
         header.size = static_cast<u64>(image_bytes.size());
         header.width = manifest.image.width;
         header.height = manifest.image.height;
         header.format = manifest.image.format;
 
-        appendPod(chunk.bytes, header);
+        utility::appendPod(chunk.bytes, header);
         chunk.bytes.insert(chunk.bytes.end(), image_bytes.begin(), image_bytes.end());
 
-        std::memcpy(chunk.toc.type, damb::CL_IMAGE, 4);
+        std::memcpy(chunk.toc.type, damb::CL_IMAGE, amb::data::CHUNK_TYPE_LENGTH);
         chunk.toc.id = manifest.image.id;
         chunk.toc.size = chunk.bytes.size();
         chunk.toc.uncompressed_size = chunk.toc.size;
@@ -367,17 +360,17 @@ namespace amb {
         ChunkBlob chunk;
 
         damb::AtlasChunkHeader header {};
-        std::memcpy(header.header.type, damb::CL_ATLAS, 4);
+        std::memcpy(header.header.type, damb::CL_ATLAS, amb::data::CHUNK_TYPE_LENGTH);
         header.header.id = manifest.atlas.id;
         header.asset_count = static_cast<u32>(manifest.atlas.records.size());
         header.image_id = manifest.atlas.image_id;
 
-        appendPod(chunk.bytes, header);
+        utility::appendPod(chunk.bytes, header);
         for (const damb::AtlasRecord& record : manifest.atlas.records) {
-            appendPod(chunk.bytes, record);
+            utility::appendPod(chunk.bytes, record);
         }
 
-        std::memcpy(chunk.toc.type, damb::CL_ATLAS, 4);
+        std::memcpy(chunk.toc.type, damb::CL_ATLAS, amb::data::CHUNK_TYPE_LENGTH);
         chunk.toc.id = manifest.atlas.id;
         chunk.toc.size = chunk.bytes.size();
         chunk.toc.uncompressed_size = chunk.toc.size;
@@ -388,7 +381,7 @@ namespace amb {
         ChunkBlob chunk;
 
         damb::MapLayerChunkHeader header {};
-        std::memcpy(header.header.type, damb::CL_MAP_LAYER, 4);
+        std::memcpy(header.header.type, damb::CL_MAP_LAYER, amb::data::CHUNK_TYPE_LENGTH);
         header.header.id = manifest.map.id;
         header.width = manifest.map.width;
         header.height = manifest.map.height;
@@ -396,16 +389,16 @@ namespace amb {
         header.atlas_id = manifest.map.atlas_id;
         header.encoding = damb::MapEncoding::raw;
 
-        appendPod(chunk.bytes, header);
+        utility::appendPod(chunk.bytes, header);
 
         for (const u16 atlas_record_index : manifest.map.tile_ids) {
             damb::MapCell cell {};
             cell.id = 0;
             cell.atlas_record_index = atlas_record_index;
-            appendPod(chunk.bytes, cell);
+            utility::appendPod(chunk.bytes, cell);
         }
 
-        std::memcpy(chunk.toc.type, damb::CL_MAP_LAYER, 4);
+        std::memcpy(chunk.toc.type, damb::CL_MAP_LAYER, amb::data::CHUNK_TYPE_LENGTH);
         chunk.toc.id = manifest.map.id;
         chunk.toc.size = chunk.bytes.size();
         chunk.toc.uncompressed_size = chunk.toc.size;
@@ -431,7 +424,7 @@ namespace amb {
         const u64 file_size = toc_offset + (static_cast<u64>(toc_count) * damb::TOC_ENTRY_SIZE);
 
         damb::Header header {};
-        std::memcpy(header.magic, damb::MAGIC, 8);
+        std::memcpy(header.magic, damb::MAGIC, amb::data::MAGIC_LENGTH);
         header.file_size = file_size;
         header.toc_offset = toc_offset;
         header.toc_count = toc_count;
