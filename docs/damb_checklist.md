@@ -28,12 +28,12 @@
 
 - [ ] **Phase 2 — Format-Level Correctness & Validation**
 
-  - [ ] 4. Define spawn-point representation (format-level)
+  - [x] 4. Define spawn-point representation (format-level)
         - Spawn needs to live in ENTS layer not yet implemented
         - Defer implementation for now.
         - Create fallback spawn point of map centre.
 
-  - [ ] 5. Enforce spawn invariant in loader (DEFERRED)
+  - [x] 5. Enforce spawn invariant in loader (DEFERRED)
         - Validate **exactly one spawn cell** exists.
         - Fail fast with clear error message if:
           - Zero spawn cells.
