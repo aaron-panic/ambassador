@@ -20,12 +20,18 @@ add_library(libdata STATIC
     src/damb_loader.cxx
 )
 
+add_library(utility STATIC
+    src/utility_string.cxx
+    src/utility_parse.cxx
+)
+
 # Release Binary
 add_executable(ambassador
     src/main.cxx
 )
 
 add_executable(dambassador
+    src/dambassador_main.cxx
     src/dambassador.cxx
 )
 
@@ -41,6 +47,7 @@ set_target_properties(ambassador PROPERTIES
 )
 
 target_link_libraries(dambassador PRIVATE
+    utility
     libdata
     PkgConfig::SDL3
     PkgConfig::SDL3_IMAGE
