@@ -9,7 +9,6 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -18,6 +17,11 @@ namespace {
     struct AtlasChunkMetadata {
         u32 asset_count = 0;
         u16 image_id = 0;
+    };
+
+    struct AtlasChunkRuntimeData {
+        AtlasRuntime atlas_runtime {};
+        AtlasChunkMetadata metadata {};
     };
 
     template <typename T>
@@ -66,13 +70,12 @@ namespace {
         throw std::runtime_error("No MAPL chunk found in file.");
     }
 
-    std::unordered_map<u16, AtlasChunkMetadata> collectAtlasMetadataBeforeMapLayer(
+    damb::TocEntry findAtlasEntryByIdBeforeMapLayer(
         std::ifstream& stream,
         const damb::Header& header,
+        const u16 atlas_id,
         const u64 mapl_offset)
     {
-        std::unordered_map<u16, AtlasChunkMetadata> atlas_metadata_by_id;
-
         stream.seekg(static_cast<std::streamoff>(header.toc_offset), std::ios::beg);
         if (!stream) {
             throw std::runtime_error("Failed to seek to TOC.");
@@ -81,35 +84,21 @@ namespace {
         for (u32 i = 0; i < header.toc_count; i++) {
             const damb::TocEntry entry = readPod<damb::TocEntry>(stream, "TOC entry");
 
-            if (entry.offset >= mapl_offset || !hasChunkType(entry.type, damb::CL_ATLAS)) {
+            if (entry.offset >= mapl_offset) {
                 continue;
             }
 
-            stream.seekg(static_cast<std::streamoff>(entry.offset), std::ios::beg);
-            if (!stream) {
-                throw std::runtime_error("Failed to seek to ATLS chunk.");
+            if (!hasChunkType(entry.type, damb::CL_ATLAS) || entry.id != atlas_id) {
+                continue;
             }
 
-            const damb::AtlasChunkHeader atlas_header = readPod<damb::AtlasChunkHeader>(stream, "ATLS header");
-            if (!hasChunkType(atlas_header.header.type, damb::CL_ATLAS)) {
-                throw std::runtime_error("TOC ATLS entry points to a non-ATLS chunk.");
-            }
-
-            atlas_metadata_by_id[atlas_header.header.id] = AtlasChunkMetadata {
-                atlas_header.asset_count,
-                atlas_header.image_id,
-            };
-
-            stream.seekg(
-                static_cast<std::streamoff>(header.toc_offset + (static_cast<u64>(i + 1u) * damb::TOC_ENTRY_SIZE)),
-                std::ios::beg
-            );
-            if (!stream) {
-                throw std::runtime_error("Failed to seek to next TOC entry.");
-            }
+            return entry;
         }
 
-        return atlas_metadata_by_id;
+        throw std::runtime_error(
+            "Missing atlas dependency for MAPL chunk. Expected atlas_id=" +
+            std::to_string(atlas_id) + " to reference an ATLS chunk appearing before MAPL."
+        );
     }
 
     damb::TocEntry findImageEntryByIdBeforeMapLayer(
@@ -200,6 +189,68 @@ namespace {
         image_runtime.texture.reset(raw_texture);
         return image_runtime;
     }
+
+    AtlasChunkRuntimeData loadAtlasRuntimeFromChunk(std::ifstream& stream, const damb::TocEntry& atlas_entry) {
+        stream.seekg(static_cast<std::streamoff>(atlas_entry.offset), std::ios::beg);
+        if (!stream) {
+            throw std::runtime_error("Failed to seek to ATLS chunk.");
+        }
+
+        const damb::AtlasChunkHeader atlas_header = readPod<damb::AtlasChunkHeader>(stream, "ATLS header");
+        if (!hasChunkType(atlas_header.header.type, damb::CL_ATLAS)) {
+            throw std::runtime_error("TOC ATLS entry points to a non-ATLS chunk.");
+        }
+
+        if (atlas_header.header.id != atlas_entry.id) {
+            throw std::runtime_error("TOC ATLS entry id does not match ATLS chunk header id.");
+        }
+
+        if (atlas_entry.size < damb::ATLS_HEADER_SIZE) {
+            throw std::runtime_error("ATLS TOC size is smaller than ATLS header size.");
+        }
+
+        const u64 record_bytes = atlas_entry.size - static_cast<u64>(damb::ATLS_HEADER_SIZE);
+        if ((record_bytes % static_cast<u64>(damb::ATLS_RECORD_SIZE)) != 0) {
+            throw std::runtime_error("ATLS payload size is not aligned to AtlasRecord size.");
+        }
+
+        const u64 toc_record_count = record_bytes / static_cast<u64>(damb::ATLS_RECORD_SIZE);
+        if (toc_record_count != static_cast<u64>(atlas_header.asset_count)) {
+            throw std::runtime_error("ATLS record count does not match ATLS header asset_count.");
+        }
+
+        if (toc_record_count > static_cast<u64>(std::numeric_limits<std::size_t>::max())) {
+            throw std::runtime_error("ATLS has too many records for this platform.");
+        }
+
+        std::vector<damb::AtlasRecord> records(static_cast<std::size_t>(toc_record_count));
+        if (!records.empty()) {
+            stream.read(reinterpret_cast<char*>(records.data()), static_cast<std::streamsize>(records.size() * sizeof(damb::AtlasRecord)));
+            if (!stream) {
+                throw std::runtime_error("Failed to read ATLS records.");
+            }
+        }
+
+        AtlasRuntime atlas_runtime {};
+        atlas_runtime.rects.reserve(records.size());
+
+        for (const damb::AtlasRecord& record : records) {
+            atlas_runtime.rects.push_back(SDL_FRect {
+                static_cast<float>(record.src_x),
+                static_cast<float>(record.src_y),
+                static_cast<float>(record.src_w),
+                static_cast<float>(record.src_h),
+            });
+        }
+
+        return AtlasChunkRuntimeData {
+            std::move(atlas_runtime),
+            AtlasChunkMetadata {
+                atlas_header.asset_count,
+                atlas_header.image_id,
+            }
+        };
+    }
 }
 
 VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::filesystem::path& file_path) const {
@@ -239,21 +290,18 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
         throw std::runtime_error("Only raw map encoding is supported.");
     }
 
-    const std::unordered_map<u16, AtlasChunkMetadata> atlas_metadata_by_id =
-        collectAtlasMetadataBeforeMapLayer(stream, header, mapl_entry.offset);
-
-    const auto atlas_it = atlas_metadata_by_id.find(mapl_header.atlas_id);
-    if (atlas_it == atlas_metadata_by_id.end()) {
-        throw std::runtime_error(
-            "Missing atlas dependency for MAPL chunk. Expected atlas_id=" +
-            std::to_string(mapl_header.atlas_id) + " to reference an ATLS chunk appearing before MAPL."
-        );
-    }
+    const damb::TocEntry atlas_entry = findAtlasEntryByIdBeforeMapLayer(
+        stream,
+        header,
+        mapl_header.atlas_id,
+        mapl_entry.offset
+    );
+    const AtlasChunkRuntimeData atlas_runtime_data = loadAtlasRuntimeFromChunk(stream, atlas_entry);
 
     const damb::TocEntry imag_entry = findImageEntryByIdBeforeMapLayer(
         stream,
         header,
-        atlas_it->second.image_id,
+        atlas_runtime_data.metadata.image_id,
         mapl_entry.offset
     );
     ImageRuntime image_runtime = loadImageRuntimeFromChunk(stream, imag_entry, renderer);
@@ -276,7 +324,7 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
     runtime_cells.reserve(cell_count);
 
     for (const damb::MapCell& cell : cells) {
-        if (cell.atlas_record_index >= atlas_it->second.asset_count) {
+        if (cell.atlas_record_index >= atlas_runtime_data.metadata.asset_count) {
             throw std::runtime_error(
                 "MAPL cell atlas_record_index out of range for referenced atlas."
             );
@@ -287,11 +335,9 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
 
     const amb::runtime::SpawnPoint spawn_point = map_runtime.defaultSpawnPoint();
 
-    AtlasRuntime atlas_runtime {};
-
     return std::make_unique<MapLayer>(
         std::move(image_runtime),
-        std::move(atlas_runtime),
+        std::move(atlas_runtime_data.atlas_runtime),
         std::move(map_runtime),
         spawn_point
     );
