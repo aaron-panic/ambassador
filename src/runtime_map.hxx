@@ -2,6 +2,7 @@
 #define RUNTIME_MAP_HXX_INCLUDED
 
 #include "amb_types.hxx"
+#include "config.hxx"
 
 #include <cmath>
 #include <cstddef>
@@ -22,8 +23,8 @@ namespace amb::runtime {
 
 class MapRuntime {
 public:
-    MapRuntime(size_t width, size_t height, u16 tile_width, u16 tile_height)
-    : m_width(width), m_height(height), m_tile_width(tile_width), m_tile_height(tile_height) {}
+    MapRuntime(size_t width, size_t height)
+    : m_width(width), m_height(height) {}
 
     inline bool validCellCount() const noexcept { return m_width * m_height == atlas_idx.size(); }
 
@@ -42,12 +43,12 @@ public:
     }
 
     inline bool inBounds(float world_x, float world_y) const noexcept {
-        if (m_tile_width == 0 || m_tile_height == 0 || world_x < 0.0f || world_y < 0.0f) {
+        if (amb::game::MAP_TILE_SIZE == 0 || world_x < 0.0f || world_y < 0.0f) {
             return false;
         }
 
-        const float max_world_x = static_cast<float>(m_width)  * static_cast<float>(m_tile_width);
-        const float max_world_y = static_cast<float>(m_height) * static_cast<float>(m_tile_height);
+        const float max_world_x = static_cast<float>(m_width)  * static_cast<float>(amb::game::MAP_TILE_SIZE);
+        const float max_world_y = static_cast<float>(m_height) * static_cast<float>(amb::game::MAP_TILE_SIZE);
 
         return world_x < max_world_x && world_y < max_world_y;
     }
@@ -68,17 +69,17 @@ public:
         i32& min_tx, i32& max_tx,
         i32& min_ty, i32& max_ty) const noexcept
     {
-        if (m_width == 0 || m_height == 0 || m_tile_width == 0 || m_tile_height == 0) {
+        if (m_width == 0 || m_height == 0 || amb::game::MAP_TILE_SIZE == 0) {
             min_tx = min_ty = 0;
             max_tx = max_ty = -1; // empty
             return;
         }
 
         // world pixels -> tile coords (inclusive tile span)
-        min_tx = static_cast<i32>(std::floor(world_left   / static_cast<float>(m_tile_width)));
-        min_ty = static_cast<i32>(std::floor(world_top    / static_cast<float>(m_tile_height)));
-        max_tx = static_cast<i32>(std::floor((world_right  - 1.0f) / static_cast<float>(m_tile_width)));
-        max_ty = static_cast<i32>(std::floor((world_bottom - 1.0f) / static_cast<float>(m_tile_height)));
+        min_tx = static_cast<i32>(std::floor(world_left   / static_cast<float>(amb::game::MAP_TILE_SIZE)));
+        min_ty = static_cast<i32>(std::floor(world_top    / static_cast<float>(amb::game::MAP_TILE_SIZE)));
+        max_tx = static_cast<i32>(std::floor((world_right  - 1.0f) / static_cast<float>(amb::game::MAP_TILE_SIZE)));
+        max_ty = static_cast<i32>(std::floor((world_bottom - 1.0f) / static_cast<float>(amb::game::MAP_TILE_SIZE)));
 
         // clamp to map tile bounds
         const i32 max_valid_x = static_cast<i32>(m_width) - 1;
@@ -94,26 +95,26 @@ public:
     }
 
     inline size_t worldToTileX(float world_x) const noexcept {
-        if (m_tile_width == 0 || world_x < 0.0f) {
+        if (amb::game::MAP_TILE_SIZE == 0 || world_x < 0.0f) {
             return amb::runtime::INDEX_NPOS;
         }
 
         // Keep float -> size_t conversion after validity checks and explicit flooring.
         const size_t tx = static_cast<size_t>(
-            std::floor(world_x / static_cast<float>(m_tile_width))
+            std::floor(world_x / static_cast<float>(amb::game::MAP_TILE_SIZE))
         );
 
         return (tx < m_width) ? tx : amb::runtime::INDEX_NPOS;
     }
 
     inline size_t worldToTileY(float world_y) const noexcept {
-        if (m_tile_height == 0 || world_y < 0.0f) {
+        if (amb::game::MAP_TILE_SIZE == 0 || world_y < 0.0f) {
             return amb::runtime::INDEX_NPOS;
         }
 
         // Keep float -> size_t conversion after validity checks and explicit flooring.
         const size_t ty = static_cast<size_t>(
-            std::floor(world_y / static_cast<float>(m_tile_height))
+            std::floor(world_y / static_cast<float>(amb::game::MAP_TILE_SIZE))
         );
 
         return (ty < m_height) ? ty : amb::runtime::INDEX_NPOS;
@@ -134,7 +135,7 @@ public:
     inline amb::runtime::SpawnPoint defaultSpawnPoint() const noexcept {
         amb::runtime::SpawnPoint spawn {};
 
-        if (m_width == 0 || m_height == 0 || m_tile_width == 0 || m_tile_height == 0) {
+        if (m_width == 0 || m_height == 0 || amb::game::MAP_TILE_SIZE == 0) {
             return spawn;
         }
 
@@ -143,8 +144,8 @@ public:
         spawn.tile_x = m_width / 2;
         spawn.tile_y = m_height / 2;
 
-        spawn.world_x = (static_cast<float>(spawn.tile_x) + 0.5f) * static_cast<float>(m_tile_width);
-        spawn.world_y = (static_cast<float>(spawn.tile_y) + 0.5f) * static_cast<float>(m_tile_height);
+        spawn.world_x = (static_cast<float>(spawn.tile_x) + 0.5f) * static_cast<float>(amb::game::MAP_TILE_SIZE);
+        spawn.world_y = (static_cast<float>(spawn.tile_y) + 0.5f) * static_cast<float>(amb::game::MAP_TILE_SIZE);
         spawn.is_fallback = true;
         return spawn;
     }
@@ -152,8 +153,6 @@ public:
 private:
     size_t m_width;
     size_t m_height;
-    u16 m_tile_width;
-    u16 m_tile_height;
     std::vector<Cell> atlas_idx;
 };
 

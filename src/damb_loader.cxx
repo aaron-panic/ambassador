@@ -7,11 +7,11 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
     namespace damb = amb::damb;
-    constexpr u16 DEFAULT_TILE_SIZE = 1;
 
     template <typename T>
     T readPod(std::ifstream& stream, const std::string& context) {
@@ -58,6 +58,53 @@ namespace {
 
         throw std::runtime_error("No MAPL chunk found in file.");
     }
+
+    std::unordered_map<u16, u32> collectAtlasRecordCountsBeforeMapLayer(
+        std::ifstream& stream,
+        const damb::Header& header,
+        const u64 mapl_offset)
+    {
+        std::unordered_map<u16, u32> atlas_record_counts;
+
+        stream.seekg(static_cast<std::streamoff>(header.toc_offset), std::ios::beg);
+        if (!stream) {
+            throw std::runtime_error("Failed to seek to TOC.");
+        }
+
+        for (u32 i = 0; i < header.toc_count; i++) {
+            const damb::TocEntry entry = readPod<damb::TocEntry>(stream, "TOC entry");
+
+            if (entry.offset >= mapl_offset) {
+                continue;
+            }
+
+            if (!hasChunkType(entry.type, damb::CL_ATLAS)) {
+                continue;
+            }
+
+            stream.seekg(static_cast<std::streamoff>(entry.offset), std::ios::beg);
+            if (!stream) {
+                throw std::runtime_error("Failed to seek to ATLS chunk.");
+            }
+
+            const damb::AtlasChunkHeader atlas_header = readPod<damb::AtlasChunkHeader>(stream, "ATLS header");
+            if (!hasChunkType(atlas_header.header.type, damb::CL_ATLAS)) {
+                throw std::runtime_error("TOC ATLS entry points to a non-ATLS chunk.");
+            }
+
+            atlas_record_counts[atlas_header.header.id] = atlas_header.asset_count;
+
+            stream.seekg(
+                static_cast<std::streamoff>(header.toc_offset + (static_cast<u64>(i + 1u) * damb::TOC_ENTRY_SIZE)),
+                std::ios::beg
+            );
+            if (!stream) {
+                throw std::runtime_error("Failed to seek to next TOC entry.");
+            }
+        }
+
+        return atlas_record_counts;
+    }
 }
 
 VisualLayerPtr DambLoader::loadMapLayer(const std::filesystem::path& file_path) const {
@@ -97,6 +144,22 @@ VisualLayerPtr DambLoader::loadMapLayer(const std::filesystem::path& file_path) 
         throw std::runtime_error("Only raw map encoding is supported.");
     }
 
+    const std::unordered_map<u16, u32> atlas_record_counts =
+        collectAtlasRecordCountsBeforeMapLayer(stream, header, mapl_entry.offset);
+
+    const auto atlas_it = atlas_record_counts.find(mapl_header.atlas_id);
+    if (atlas_it == atlas_record_counts.end()) {
+        throw std::runtime_error(
+            "Missing atlas dependency for MAPL chunk. Expected atlas_id=" +
+            std::to_string(mapl_header.atlas_id) + " to reference an ATLS chunk appearing before MAPL."
+        );
+    }
+
+    stream.seekg(static_cast<std::streamoff>(mapl_entry.offset + damb::MAPL_HEADER_SIZE), std::ios::beg);
+    if (!stream) {
+        throw std::runtime_error("Failed to seek to MAPL cells.");
+    }
+
     const std::size_t cell_count = checkedCellCount(mapl_header.width, mapl_header.height);
 
     std::vector<damb::MapCell> cells(cell_count);
@@ -105,11 +168,17 @@ VisualLayerPtr DambLoader::loadMapLayer(const std::filesystem::path& file_path) 
         throw std::runtime_error("Failed to read MAPL cells.");
     }
 
-    MapRuntime map_runtime(mapl_header.width, mapl_header.height, DEFAULT_TILE_SIZE, DEFAULT_TILE_SIZE);
+    MapRuntime map_runtime(mapl_header.width, mapl_header.height);
     auto& runtime_cells = map_runtime.cells();
     runtime_cells.reserve(cell_count);
 
     for (const damb::MapCell& cell : cells) {
+        if (cell.atlas_record_index >= atlas_it->second) {
+            throw std::runtime_error(
+                "MAPL cell atlas_record_index out of range for referenced atlas."
+            );
+        }
+
         runtime_cells.push_back(cell.atlas_record_index);
     }
 
