@@ -26,7 +26,32 @@ public:
     MapRuntime(size_t width, size_t height)
     : m_width(width), m_height(height) {}
 
-    inline bool validCellCount() const noexcept { return m_width * m_height == atlas_idx.size(); }
+    inline size_t width() const noexcept { return m_width; }
+    inline size_t height() const noexcept { return m_height; }
+
+    inline size_t cellCount() const noexcept { return m_cells.size(); }
+    inline bool validCellCount() const noexcept { return m_width * m_height == m_cells.size(); }
+
+    inline const std::vector<Cell>& cells() const noexcept { return m_cells; }
+
+    inline void reserveCells(std::size_t count) { m_cells.reserve(count); }
+
+    inline void appendCell(Cell cell) { m_cells.push_back(cell); }
+
+    inline Cell* tryCell(float world_x, float world_y) noexcept {
+        const size_t idx = indexOf(world_x, world_y);
+        return (idx == amb::runtime::INDEX_NPOS || idx >= m_cells.size()) ? nullptr : &m_cells[idx];
+    }
+
+    inline const Cell* tryCell(float world_x, float world_y) const noexcept {
+        const size_t idx = indexOf(world_x, world_y);
+        return (idx == amb::runtime::INDEX_NPOS || idx >= m_cells.size()) ? nullptr : &m_cells[idx];
+    }
+
+    inline const Cell* cellAtTile(size_t tile_x, size_t tile_y) const noexcept {
+        const size_t idx = indexOfTile(tile_x, tile_y);
+        return (idx == amb::runtime::INDEX_NPOS || idx >= m_cells.size()) ? nullptr : &m_cells[idx];
+    }
 
     inline size_t indexOf(float world_x, float world_y) const noexcept {
         const size_t tile_x = worldToTileX(world_x);
@@ -51,16 +76,6 @@ public:
         const float max_world_y = static_cast<float>(m_height) * static_cast<float>(amb::game::MAP_TILE_SIZE);
 
         return world_x < max_world_x && world_y < max_world_y;
-    }
-
-    inline Cell* tryCell(float world_x, float world_y) noexcept {
-        const size_t idx = indexOf(world_x, world_y);
-        return (idx == amb::runtime::INDEX_NPOS || idx >= atlas_idx.size()) ? nullptr : &atlas_idx[idx];
-    }
-
-    inline const Cell* tryCell(float world_x, float world_y) const noexcept {
-        const size_t idx = indexOf(world_x, world_y);
-        return (idx == amb::runtime::INDEX_NPOS || idx >= atlas_idx.size()) ? nullptr : &atlas_idx[idx];
     }
 
     inline void clampVisibleWorldToTileRange(
@@ -99,7 +114,6 @@ public:
             return amb::runtime::INDEX_NPOS;
         }
 
-        // Keep float -> size_t conversion after validity checks and explicit flooring.
         const size_t tx = static_cast<size_t>(
             std::floor(world_x / static_cast<float>(amb::game::MAP_TILE_SIZE))
         );
@@ -112,7 +126,6 @@ public:
             return amb::runtime::INDEX_NPOS;
         }
 
-        // Keep float -> size_t conversion after validity checks and explicit flooring.
         const size_t ty = static_cast<size_t>(
             std::floor(world_y / static_cast<float>(amb::game::MAP_TILE_SIZE))
         );
@@ -125,12 +138,8 @@ public:
             return amb::runtime::INDEX_NPOS;
         }
 
-        // Row-major flattening: y * width + x.
         return (tile_y * m_width) + tile_x;
     }
-
-    inline std::vector<Cell>& cells() noexcept { return atlas_idx; }
-    inline const std::vector<Cell>& cells() const noexcept { return atlas_idx; }
 
     inline amb::runtime::SpawnPoint defaultSpawnPoint() const noexcept {
         amb::runtime::SpawnPoint spawn {};
@@ -139,8 +148,6 @@ public:
             return spawn;
         }
 
-        // Choose the map midpoint tile. For even dimensions, this picks the upper-left tile
-        // of the four center tiles; ENTS-based spawn data will override this later.
         spawn.tile_x = m_width / 2;
         spawn.tile_y = m_height / 2;
 
@@ -153,7 +160,7 @@ public:
 private:
     size_t m_width;
     size_t m_height;
-    std::vector<Cell> atlas_idx;
+    std::vector<Cell> m_cells;
 };
 
 #endif
