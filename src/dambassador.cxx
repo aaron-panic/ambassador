@@ -97,6 +97,218 @@ namespace amb {
                 }
             }
         }
+
+        damb::ImageFormat parseImageFormatValue(const std::string& value, std::size_t line_number) {
+            if (value == "png") {
+                return damb::ImageFormat::png;
+            }
+
+            throw std::runtime_error("Line " + std::to_string(line_number) + ": unsupported image format: " + value);
+        }
+
+        class ManifestParser {
+        public:
+            damb::ManifestSpec parse(const std::filesystem::path& manifest_path) {
+                std::ifstream stream(manifest_path);
+                if (!stream.is_open()) {
+                    throw std::runtime_error("Unable to open manifest file: " + manifest_path.string());
+                }
+
+                std::string line;
+                while (std::getline(stream, line)) {
+                    m_line_number++;
+                    const std::string cleaned = utility::trim(line);
+                    if (cleaned.empty() || cleaned[0] == ';') {
+                        continue;
+                    }
+
+                    const std::vector<std::string> tokens = utility::splitWhitespace(cleaned);
+                    if (!m_saw_manifest_header) {
+                        parseHeader(tokens);
+                        continue;
+                    }
+
+                    if (m_state == ManifestParseState::rows) {
+                        parseRowsContent(cleaned, tokens);
+                        continue;
+                    }
+
+                    parseStatement(tokens);
+                }
+
+                validateManifest(m_manifest, m_state, m_saw_manifest_header);
+                return m_manifest;
+            }
+
+        private:
+            void parseHeader(const std::vector<std::string>& tokens) {
+                if (tokens.size() != 2 || tokens[0] != "damb_manifest") {
+                    throw std::runtime_error(
+                        "Line " + std::to_string(m_line_number) + ": first non-comment line must be `damb_manifest 1`."
+                    );
+                }
+
+                const u64 version = utility::parseUnsigned(tokens[1], m_line_number, "manifest version");
+                if (version != 1) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": only manifest version 1 is supported.");
+                }
+
+                m_saw_manifest_header = true;
+            }
+
+            void parseRowsContent(const std::string& cleaned, const std::vector<std::string>& tokens) {
+                if (tokens.size() == 1 && tokens[0] == "endrows") {
+                    m_state = ManifestParseState::map;
+                    return;
+                }
+
+                const std::vector<std::string> row_tokens = utility::split(cleaned, '|');
+                if (row_tokens.size() != m_manifest.map.width) {
+                    throw std::runtime_error(
+                        "Line " + std::to_string(m_line_number) + ": row width mismatch; expected " +
+                        std::to_string(m_manifest.map.width) + " values separated by '|'."
+                    );
+                }
+
+                for (const std::string& cell_token_raw : row_tokens) {
+                    const std::string cell_token = utility::trim(cell_token_raw);
+                    const u16 tile_id = utility::parseUnsigned16(cell_token, m_line_number, "map tile id");
+                    m_manifest.map.tile_ids.push_back(tile_id);
+                }
+            }
+
+            void parseStatement(const std::vector<std::string>& tokens) {
+                const std::string& keyword = tokens[0];
+                if (keyword == "output") { parseOutput(tokens); return; }
+                if (keyword == "image") { parseImage(tokens); return; }
+                if (keyword == "atlas") { parseAtlasStart(tokens); return; }
+                if (keyword == "tile") { parseTile(tokens); return; }
+                if (keyword == "endatlas") { parseAtlasEnd(tokens); return; }
+                if (keyword == "map") { parseMapStart(tokens); return; }
+                if (keyword == "rows") { parseRowsStart(tokens); return; }
+                if (keyword == "endmap") { parseMapEnd(tokens); return; }
+
+                throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unknown statement: " + keyword);
+            }
+
+            void parseOutput(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::top || tokens.size() != 2) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": output line must be `output <path>` at top scope.");
+                }
+
+                m_manifest.output_path = tokens[1];
+                m_manifest.has_output = true;
+            }
+
+            void parseImage(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::top || tokens.size() != 6) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": image line must be `image <id> <path> <width> <height> <format>`.");
+                }
+
+                m_manifest.image.id = utility::parseUnsigned16(tokens[1], m_line_number, "image id");
+                m_manifest.image.file_path = tokens[2];
+                m_manifest.image.width = utility::parseUnsigned32(tokens[3], m_line_number, "image width");
+                m_manifest.image.height = utility::parseUnsigned32(tokens[4], m_line_number, "image height");
+                m_manifest.image.format = parseImageFormatValue(tokens[5], m_line_number);
+                m_manifest.has_image = true;
+            }
+
+            void parseAtlasStart(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::top || tokens.size() != 3) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": atlas line must be `atlas <id> image=<image_id>`.");
+                }
+
+                m_manifest.atlas = damb::AtlasSpec {};
+                m_manifest.atlas.id = utility::parseUnsigned16(tokens[1], m_line_number, "atlas id");
+
+                const auto [key, value] = utility::parseKeyValue(tokens[2], m_line_number);
+                if (key != "image") {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": atlas line must include image=<image_id>.");
+                }
+
+                m_manifest.atlas.image_id = utility::parseUnsigned16(value, m_line_number, "atlas image_id");
+                m_manifest.atlas.records.clear();
+                m_manifest.has_atlas = true;
+                m_state = ManifestParseState::atlas;
+            }
+
+            void parseTile(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::atlas) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": tile entry is only valid inside atlas block.");
+                }
+                if (tokens.size() < 3) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": tile entry must include id and rect.");
+                }
+
+                damb::AtlasRecord record {};
+                record.id = utility::parseUnsigned16(tokens[1], m_line_number, "tile id");
+                bool has_rect = false;
+                parseAtlasTileRecord(record, has_rect, tokens, m_line_number);
+
+                if (!has_rect) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": tile entry is missing rect=x,y,w,h.");
+                }
+
+                m_manifest.atlas.records.push_back(record);
+            }
+
+            void parseAtlasEnd(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::atlas || tokens.size() != 1) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unexpected endatlas.");
+                }
+
+                m_state = ManifestParseState::top;
+            }
+
+            void parseMapStart(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::top || tokens.size() != 6) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": map line must be `map <id> atlas=<id> width=<w> height=<h> z=<z>`." );
+                }
+
+                m_manifest.map = damb::MapSpec {};
+                m_manifest.map.id = utility::parseUnsigned16(tokens[1], m_line_number, "map id");
+
+                for (std::size_t i = 2; i < tokens.size(); i++) {
+                    const auto [key, value] = utility::parseKeyValue(tokens[i], m_line_number);
+                    if (key == "atlas") {
+                        m_manifest.map.atlas_id = utility::parseUnsigned16(value, m_line_number, "map atlas_id");
+                    } else if (key == "width") {
+                        m_manifest.map.width = utility::parseUnsigned32(value, m_line_number, "map width");
+                    } else if (key == "height") {
+                        m_manifest.map.height = utility::parseUnsigned32(value, m_line_number, "map height");
+                    } else if (key == "z") {
+                        m_manifest.map.z = utility::parseSigned32(value, m_line_number, "map z");
+                    } else {
+                        throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unknown map field: " + key);
+                    }
+                }
+
+                m_manifest.map.tile_ids.clear();
+                m_manifest.has_map = true;
+                m_state = ManifestParseState::map;
+            }
+
+            void parseRowsStart(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::map || tokens.size() != 1) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": rows block must be inside map.");
+                }
+
+                m_state = ManifestParseState::rows;
+            }
+
+            void parseMapEnd(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::map || tokens.size() != 1) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unexpected endmap.");
+                }
+
+                m_state = ManifestParseState::top;
+            }
+
+            damb::ManifestSpec m_manifest {};
+            ManifestParseState m_state = ManifestParseState::top;
+            std::size_t m_line_number = 0;
+            bool m_saw_manifest_header = false;
+        };
     }
 
     void Dambassador::create(const std::filesystem::path& manifest_path) const {
@@ -128,183 +340,8 @@ namespace amb {
     }
 
     damb::ManifestSpec Dambassador::parseManifest(const std::filesystem::path& manifest_path) const {
-        std::ifstream stream(manifest_path);
-        if (!stream.is_open()) {
-            throw std::runtime_error("Unable to open manifest file: " + manifest_path.string());
-        }
-
-        damb::ManifestSpec manifest;
-        ManifestParseState state = ManifestParseState::top;
-        std::string line;
-        std::size_t line_number = 0;
-        bool saw_manifest_header = false;
-
-        while (std::getline(stream, line)) {
-            line_number++;
-            const std::string cleaned = utility::trim(line);
-
-            if (cleaned.empty() || cleaned[0] == ';') {
-                continue;
-            }
-
-            const std::vector<std::string> tokens = utility::splitWhitespace(cleaned);
-
-            if (!saw_manifest_header) {
-                if (tokens.size() != 2 || tokens[0] != "damb_manifest") {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": first non-comment line must be `damb_manifest 1`.");
-                }
-
-                const u64 version = utility::parseUnsigned(tokens[1], line_number, "manifest version");
-                if (version != 1) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": only manifest version 1 is supported.");
-                }
-
-                saw_manifest_header = true;
-                continue;
-            }
-
-            if (state == ManifestParseState::rows) {
-                if (tokens.size() == 1 && tokens[0] == "endrows") {
-                    state = ManifestParseState::map;
-                    continue;
-                }
-
-                const std::vector<std::string> row_tokens = utility::split(cleaned, '|');
-                if (row_tokens.size() != manifest.map.width) {
-                    throw std::runtime_error(
-                        "Line " + std::to_string(line_number) + ": row width mismatch; expected " +
-                        std::to_string(manifest.map.width) + " values separated by '|'."
-                    );
-                }
-
-                for (const std::string& cell_token_raw : row_tokens) {
-                    const std::string cell_token = utility::trim(cell_token_raw);
-                    const u16 tile_id = utility::parseUnsigned16(cell_token, line_number, "map tile id");
-                    manifest.map.tile_ids.push_back(tile_id);
-                }
-
-                continue;
-            }
-
-            if (tokens[0] == "output") {
-                if (state != ManifestParseState::top || tokens.size() != 2) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": output line must be `output <path>` at top scope.");
-                }
-                manifest.output_path = tokens[1];
-                manifest.has_output = true;
-                continue;
-            }
-
-            if (tokens[0] == "image") {
-                if (state != ManifestParseState::top || tokens.size() != 6) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": image line must be `image <id> <path> <width> <height> <format>`.");
-                }
-
-                manifest.image.id = utility::parseUnsigned16(tokens[1], line_number, "image id");
-                manifest.image.file_path = tokens[2];
-                manifest.image.width = utility::parseUnsigned32(tokens[3], line_number, "image width");
-                manifest.image.height = utility::parseUnsigned32(tokens[4], line_number, "image height");
-                manifest.image.format = parseImageFormat(tokens[5], line_number);
-                manifest.has_image = true;
-                continue;
-            }
-
-            if (tokens[0] == "atlas") {
-                if (state != ManifestParseState::top || tokens.size() != 3) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": atlas line must be `atlas <id> image=<image_id>`.");
-                }
-
-                manifest.atlas.id = utility::parseUnsigned16(tokens[1], line_number, "atlas id");
-                const auto [key, value] = utility::parseKeyValue(tokens[2], line_number);
-                if (key != "image") {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": atlas requires image=<image_id>.");
-                }
-                manifest.atlas.image_id = utility::parseUnsigned16(value, line_number, "atlas image_id");
-                manifest.atlas.records.clear();
-                manifest.has_atlas = true;
-                state = ManifestParseState::atlas;
-                continue;
-            }
-
-            if (tokens[0] == "tile") {
-                if (state != ManifestParseState::atlas) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": tile entry is only valid inside atlas block.");
-                }
-                if (tokens.size() < 3) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": tile entry must include id and rect.");
-                }
-
-                damb::AtlasRecord record {};
-                record.id = utility::parseUnsigned16(tokens[1], line_number, "tile id");
-                bool has_rect = false;
-                parseAtlasTileRecord(record, has_rect, tokens, line_number);
-
-                if (!has_rect) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": tile entry is missing rect=x,y,w,h.");
-                }
-
-                manifest.atlas.records.push_back(record);
-                continue;
-            }
-
-            if (tokens[0] == "endatlas") {
-                if (state != ManifestParseState::atlas || tokens.size() != 1) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": unexpected endatlas.");
-                }
-                state = ManifestParseState::top;
-                continue;
-            }
-
-            if (tokens[0] == "map") {
-                if (state != ManifestParseState::top || tokens.size() != 6) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": map line must be `map <id> atlas=<id> width=<w> height=<h> z=<z>`.");
-                }
-
-                manifest.map = damb::MapSpec {};
-                manifest.map.id = utility::parseUnsigned16(tokens[1], line_number, "map id");
-
-                for (std::size_t i = 2; i < tokens.size(); i++) {
-                    const auto [key, value] = utility::parseKeyValue(tokens[i], line_number);
-                    if (key == "atlas") {
-                        manifest.map.atlas_id = utility::parseUnsigned16(value, line_number, "map atlas_id");
-                    } else if (key == "width") {
-                        manifest.map.width = utility::parseUnsigned32(value, line_number, "map width");
-                    } else if (key == "height") {
-                        manifest.map.height = utility::parseUnsigned32(value, line_number, "map height");
-                    } else if (key == "z") {
-                        manifest.map.z = utility::parseSigned32(value, line_number, "map z");
-                    } else {
-                        throw std::runtime_error("Line " + std::to_string(line_number) + ": unknown map field: " + key);
-                    }
-                }
-
-                manifest.map.tile_ids.clear();
-                manifest.has_map = true;
-                state = ManifestParseState::map;
-                continue;
-            }
-
-            if (tokens[0] == "rows") {
-                if (state != ManifestParseState::map || tokens.size() != 1) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": rows block must be inside map.");
-                }
-                state = ManifestParseState::rows;
-                continue;
-            }
-
-            if (tokens[0] == "endmap") {
-                if (state != ManifestParseState::map || tokens.size() != 1) {
-                    throw std::runtime_error("Line " + std::to_string(line_number) + ": unexpected endmap.");
-                }
-                state = ManifestParseState::top;
-                continue;
-            }
-
-            throw std::runtime_error("Line " + std::to_string(line_number) + ": unknown statement: " + tokens[0]);
-        }
-
-        validateManifest(manifest, state, saw_manifest_header);
-        return manifest;
+        ManifestParser parser;
+        return parser.parse(manifest_path);
     }
 
     std::vector<u8> Dambassador::readFileBytes(const std::filesystem::path& path) const {

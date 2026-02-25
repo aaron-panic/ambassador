@@ -118,6 +118,11 @@
            - Iterate layers.
            - Call each layer’s `render()`.
 
+  - [ ] 15.1. Separate Ambassador bootstrap from runtime orchestration
+         - Move initialization/bootstrap concerns out of `Ambassador` where practical.
+         - Isolate viewport/runtime state orchestration for cleaner lifecycle boundaries.
+         - Remove temporary debug I/O from core application object.
+
 ---
 
 - [ ] **Phase 6 — Rendering Visible Map**

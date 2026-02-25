@@ -289,8 +289,7 @@ MapRuntime DambLoader::loadMapRuntime(
     }
 
     MapRuntime map_runtime(map_header.width, map_header.height);
-    auto& runtime_cells = map_runtime.cells();
-    runtime_cells.reserve(cell_count);
+    map_runtime.reserveCells(cell_count);
 
     for (std::size_t i = 0; i < cell_count; ++i) {
         const damb::MapCell cell = amb::utility::readPod<damb::MapCell>(stream, "MAPL cell");
@@ -299,7 +298,7 @@ MapRuntime DambLoader::loadMapRuntime(
             throw std::runtime_error("MAPL cell atlas_record_index out of range for referenced atlas.");
         }
 
-        runtime_cells.push_back(cell.atlas_record_index);
+        map_runtime.appendCell(cell.atlas_record_index);
     }
 
     return map_runtime;
