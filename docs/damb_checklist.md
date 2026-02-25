@@ -2,7 +2,7 @@
 
 ---
 
-- [ ] **Phase 1 — Build & Structural Blockers (Must Fix First)**
+- [x] **Phase 1 — Build & Structural Blockers (Must Fix First)**
 
   - [x] 1. Fix build reproducibility
         - Remove or restore missing CMake source references:
