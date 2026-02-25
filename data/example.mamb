@@ -1,0 +1,30 @@
+damb_manifest 1
+
+; Output path is resolved relative to this manifest file.
+output sandbox.damb
+
+; image <id> <path> <width> <height> <format>
+image 1 tiles.png 250 50 png
+
+; atlas <id> image=<image_id>
+atlas 10 image=1
+tile 0 rect=0,0,50,50
+tile 1 rect=50,0,50,50
+tile 2 rect=100,0,50,50
+tile 3 rect=150,0,50,50
+tile 4 rect=200,0,50,50
+endatlas
+
+; map <id> atlas=<atlas_id> width=<w> height=<h> z=<z>
+map 20 atlas=10 width=8 height=8 z=0
+rows
+0|0|0|0|0|0|0|0
+0|1|1|1|1|1|1|0
+0|1|2|2|2|2|1|0
+0|1|2|3|3|2|1|0
+0|1|2|3|4|2|1|0
+0|1|2|2|2|2|1|0
+0|1|1|1|1|1|1|0
+0|0|0|0|0|0|0|0
+endrows
+endmap
