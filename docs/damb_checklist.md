@@ -83,7 +83,7 @@
 
 - [ ] **Phase 4 — Complete Loader → Runtime Translation Chain**
 
-  - [ ] 10. Load IMAG chunk
+  - [x] 10. Load IMAG chunk
          - Decode image.
          - Create `SDL_Texture`.
          - Store in `ImageRuntime`.
