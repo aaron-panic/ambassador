@@ -56,8 +56,8 @@ Define only fast-path data containers.
 
 ### 2.2 Optional helpers (runtime-only convenience)
 
-- [ ] Add lightweight utility methods (bounds/index helpers) only if they are inline and trivial.
-- [ ] Avoid putting loader validation logic here.
+- [x] Add lightweight utility methods (bounds/index helpers) only if they are inline and trivial.
+- [x] Avoid putting loader validation logic here.
 
 Exit criteria:
 
