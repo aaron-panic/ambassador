@@ -1,12 +1,16 @@
 #ifndef DAMB_RUNTIME_HXX_INCLUDED
 #define DAMB_RUNTIME_HXX_INCLUDED
 
-#include "damb_format.hxx"
 #include "amb_types.hxx"
+#include <cstddef>
 #include <vector>
 #include <memory>
+#include <limits>
 #include <SDL3/SDL.h>
 
+namespace amb::runtime {
+    const std::size_t INDEX_NPOS = std::numeric_limits<std::size_t>::max();
+}
 
 struct TextureDeleter {
     void operator()(SDL_Texture* t) { if (t) SDL_DestroyTexture(t); }
@@ -22,11 +26,31 @@ struct AtlasRuntime {
     std::vector<SDL_FRect> rects;
 };
 
-struct MapRuntime {
-    u32 width;
-    u32 height;
-    u16 tile_width;
-    u16 tile_height;
+class MapRuntime {
+public:
+    MapRuntime(size_t width, size_t height, u16 tile_width, u16 tile_height)
+    : m_width(width), m_height(height), m_tile_width(tile_width), m_tile_height(tile_height) {}
+
+    inline bool validCellCount() const noexcept { return m_width * m_height == atlas_idx.size(); }
+    inline size_t indexOf(float x, float y) const noexcept;
+    inline bool inBounds(float x, float y) const noexcept;
+    inline Cell* tryCell(float x, float y) noexcept;
+
+    inline void clampVisibleWorldToTileRange(
+        float world_left, float world_top,
+        float world_right, float world_bottom,
+        i32& min_tx, i32& max_tx,
+        i32& min_ty, i32& max_ty
+    ) const noexcept;
+
+    inline size_t worldToTileX(float world_x) const noexcept;
+    inline size_t worldToTileY(float world_y) const noexcept;
+
+private:    
+    size_t m_width;
+    size_t m_height;
+    u16 m_tile_width;
+    u16 m_tile_height;
     std::vector<Cell> atlas_idx;
 };
 
