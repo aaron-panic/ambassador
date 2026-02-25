@@ -1,7 +1,7 @@
 #ifndef VISUAL_LAYERS_HXX_INCLUDED
 #define VISUAL_LAYERS_HXX_INCLUDED
 
-#include "damb_runtime.hxx"
+#include "runtime_damb.hxx"
 
 #include <memory>
 #include <utility>

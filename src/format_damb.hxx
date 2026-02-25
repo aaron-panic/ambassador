@@ -1,5 +1,5 @@
-#ifndef DAMB_FORMAT_HXX_INCLUDED
-#define DAMB_FORMAT_HXX_INCLUDED
+#ifndef FORMAT_DAMB_HXX_INCLUDED
+#define FORMAT_DAMB_HXX_INCLUDED
 
 #include "amb_types.hxx"
 
