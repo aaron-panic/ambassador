@@ -1,31 +1,39 @@
 #include "damb_runtime.hxx"
 #include <cmath>
 
-inline size_t MapRuntime::indexOf(float x, float y) const noexcept {
-    if (x < 0.0f || y < 0.0f || m_tile_width == 0 || m_tile_height == 0) {
+inline size_t MapRuntime::indexOf(float world_x, float world_y) const noexcept {
+    const size_t tile_x = worldToTileX(world_x);
+    if (tile_x == amb::runtime::INDEX_NPOS) {
         return amb::runtime::INDEX_NPOS;
     }
 
-    const size_t fx = static_cast<size_t>(x / static_cast<float>(m_tile_width));
-    const size_t fy = static_cast<size_t>(y / static_cast<float>(m_tile_height));
-    return fy * m_width + fx;
+    const size_t tile_y = worldToTileY(world_y);
+    if (tile_y == amb::runtime::INDEX_NPOS) {
+        return amb::runtime::INDEX_NPOS;
+    }
+
+    return indexOfTile(tile_x, tile_y);
 }
 
-inline bool MapRuntime::inBounds(float x, float y) const noexcept {
-    if (x < 0.0f || y < 0.0f || m_tile_width == 0 || m_tile_height == 0) {
+inline bool MapRuntime::inBounds(float world_x, float world_y) const noexcept {
+    if (m_tile_width == 0 || m_tile_height == 0 || world_x < 0.0f || world_y < 0.0f) {
         return false;
     }
 
     const float max_world_x = static_cast<float>(m_width)  * static_cast<float>(m_tile_width);
     const float max_world_y = static_cast<float>(m_height) * static_cast<float>(m_tile_height);
 
-    return x < max_world_x && y < max_world_y;
+    return world_x < max_world_x && world_y < max_world_y;
 }
 
-inline Cell* MapRuntime::tryCell(float x, float y) noexcept {
-    if (!inBounds(x, y)) return nullptr;
-    const size_t idx = indexOf(x, y);
-    return (idx < atlas_idx.size()) ? &atlas_idx[idx] : nullptr;
+inline Cell* MapRuntime::tryCell(float world_x, float world_y) noexcept {
+    const size_t idx = indexOf(world_x, world_y);
+    return (idx == amb::runtime::INDEX_NPOS || idx >= atlas_idx.size()) ? nullptr : &atlas_idx[idx];
+}
+
+inline const Cell* MapRuntime::tryCell(float world_x, float world_y) const noexcept {
+    const size_t idx = indexOf(world_x, world_y);
+    return (idx == amb::runtime::INDEX_NPOS || idx >= atlas_idx.size()) ? nullptr : &atlas_idx[idx];
 }
 
 inline void MapRuntime::clampVisibleWorldToTileRange(
@@ -64,11 +72,12 @@ inline size_t MapRuntime::worldToTileX(float world_x) const noexcept {
         return amb::runtime::INDEX_NPOS;
     }
 
+    // Keep float -> size_t conversion after validity checks and explicit flooring.
     const size_t tx = static_cast<size_t>(
         std::floor(world_x / static_cast<float>(m_tile_width))
     );
 
-    return (tx < static_cast<size_t>(m_width)) ? tx : amb::runtime::INDEX_NPOS;
+    return (tx < m_width) ? tx : amb::runtime::INDEX_NPOS;
 }
 
 inline size_t MapRuntime::worldToTileY(float world_y) const noexcept {
@@ -76,9 +85,19 @@ inline size_t MapRuntime::worldToTileY(float world_y) const noexcept {
         return amb::runtime::INDEX_NPOS;
     }
 
+    // Keep float -> size_t conversion after validity checks and explicit flooring.
     const size_t ty = static_cast<size_t>(
         std::floor(world_y / static_cast<float>(m_tile_height))
     );
 
-    return (ty < static_cast<size_t>(m_height)) ? ty : amb::runtime::INDEX_NPOS;
+    return (ty < m_height) ? ty : amb::runtime::INDEX_NPOS;
+}
+
+inline size_t MapRuntime::indexOfTile(size_t tile_x, size_t tile_y) const noexcept {
+    if (tile_x >= m_width || tile_y >= m_height) {
+        return amb::runtime::INDEX_NPOS;
+    }
+
+    // Row-major flattening: y * width + x.
+    return (tile_y * m_width) + tile_x;
 }
