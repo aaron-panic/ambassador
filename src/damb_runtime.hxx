@@ -32,9 +32,10 @@ public:
     : m_width(width), m_height(height), m_tile_width(tile_width), m_tile_height(tile_height) {}
 
     inline bool validCellCount() const noexcept { return m_width * m_height == atlas_idx.size(); }
-    inline size_t indexOf(float x, float y) const noexcept;
-    inline bool inBounds(float x, float y) const noexcept;
-    inline Cell* tryCell(float x, float y) noexcept;
+    inline size_t indexOf(float world_x, float world_y) const noexcept;
+    inline bool inBounds(float world_x, float world_y) const noexcept;
+    inline Cell* tryCell(float world_x, float world_y) noexcept;
+    inline const Cell* tryCell(float world_x, float world_y) const noexcept;
 
     inline void clampVisibleWorldToTileRange(
         float world_left, float world_top,
@@ -45,6 +46,7 @@ public:
 
     inline size_t worldToTileX(float world_x) const noexcept;
     inline size_t worldToTileY(float world_y) const noexcept;
+    inline size_t indexOfTile(size_t tile_x, size_t tile_y) const noexcept;
 
 private:    
     size_t m_width;
