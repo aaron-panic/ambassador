@@ -8,7 +8,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
 
-add_library(libcore STATIC
+add_library(ambcore STATIC
     src/config.cxx
     src/ambassador.cxx
     src/event.cxx
@@ -16,11 +16,11 @@ add_library(libcore STATIC
     src/loop.cxx
 )
 
-add_library(libdata STATIC
+add_library(ambdata STATIC
     src/damb_loader.cxx
 )
 
-add_library(utility STATIC
+add_library(ambutility STATIC
     src/utility_string.cxx
     src/utility_parse.cxx
 )
@@ -36,8 +36,8 @@ add_executable(dambassador
 )
 
 target_link_libraries(ambassador PRIVATE
-    libcore
-    libdata
+    ambcore
+    ambdata
     PkgConfig::SDL3
     PkgConfig::SDL3_IMAGE
 )
@@ -47,8 +47,8 @@ set_target_properties(ambassador PROPERTIES
 )
 
 target_link_libraries(dambassador PRIVATE
-    utility
-    libdata
+    ambutility
+    ambdata
     PkgConfig::SDL3
     PkgConfig::SDL3_IMAGE
 )

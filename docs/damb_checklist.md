@@ -88,7 +88,7 @@
          - Create `SDL_Texture`.
          - Store in `ImageRuntime`.
 
-  - [ ] 11. Load ATLS chunk
+  - [x] 11. Load ATLS chunk
          - Parse atlas records.
          - Store source rects in `AtlasRuntime`.
 
