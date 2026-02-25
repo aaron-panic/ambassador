@@ -1,217 +1,190 @@
-# DATA-AMB Runtime Refactor Checklist (OOP + Fast Path)
-
-Goal: Implement a clean object-oriented runtime pipeline where `.damb` binary data is loaded once and transformed into compact, render-focused runtime structures. This checklist is ordered so you can finish each step before moving to the next.
+# Roadmap to Sandbox
 
 ---
 
-## 0) Runtime Principles (Lock These In First)
+- [ ] **Phase 1 — Build & Structural Blockers (Must Fix First)**
 
-- [ ] Keep file-format structs and runtime structs separate.
-- [ ] Runtime data stores only what the render path needs.
-- [ ] Loader owns translation from format (`damb_format.hxx`) to runtime (`damb_runtime.hxx`).
-- [ ] Keep polymorphism at the layer/object boundary, not per tile in the hot loop.
-- [ ] Map cells store atlas record indices (compact handle), not pointers.
-- [ ] Render loop iterates visible tile ranges only.
+  - [x] 1. Fix build reproducibility
+        - Remove or restore missing CMake source references:
+          - `src/scenedata.cxx`
+          - `src/dambassador.cxx`
+        - Ensure SDL3 pkg-config / find_package works on clean system.
+        - Verify clean clone → configure → build works without manual tweaks.
 
----
+  - [ ] 2. Fix ODR / linkage correctness
+        - `MapRuntime` methods currently marked `inline` in header but defined in `.cxx`.
+        - Either:
+          - Move definitions into header (true inline), or
+          - Remove `inline` and keep normal out-of-line definitions.
 
-## 1) File-by-File Implementation Order (Do Not Skip Around)
-
-1. [ ] `src/damb_runtime.hxx` (define runtime containers first)
-2. [ ] `src/renderable.hxx` (confirm/adjust base render interface)
-3. [ ] `src/visual_layers.hxx` (define OOP layer hierarchy + map layer API)
-4. [ ] `src/damb_loader.hxx` and/or `src/damb_loader.cxx` (translate format → runtime)
-5. [ ] Ambassador app integration file(s) (hold layers, camera, call render pipeline)
-
----
-
-## 2) `src/damb_runtime.hxx` — Runtime Struct Definitions
-
-Define only fast-path data containers.
-
-### 2.1 Core runtime structs
-
-- [x] `struct ImageRuntime`
-  - [x] Data members:
-    - [x] `SDL_Texture* texture`
-
-- [x] `struct AtlasRuntime`
-  - [x] Data members:
-    - [x] `std::vector<damb::AtlasRecord> records`
-  - [x] Notes:
-    - [x] No image reference here (image is held by layer runtime context)
-
-- [x] `struct MapCellRuntime`
-  - [x] Data members:
-    - [x] atlas record handle/index (recommended compact integer)
-  - [x] Notes:
-    - [x] No per-cell pointers
-
-- [x] `struct MapRuntime`
-  - [x] Data members:
-    - [x] `u32 width`
-    - [x] `u32 height`
-    - [x] cell size (tile width/height or one scalar if square)
-    - [x] `std::vector<MapCellRuntime> cells` (row-major flattened)
-
-### 2.2 Optional helpers (runtime-only convenience)
-
-- [x] Add lightweight utility methods (bounds/index helpers) only if they are inline and trivial.
-- [x] Avoid putting loader validation logic here.
-
-Exit criteria:
-
-- [ ] Runtime structs are compile-only containers with no file-format baggage.
+  - [ ] 3. Define resource lifetime policy
+        - Clearly define ownership of:
+          - `SDL_Renderer`
+          - `SDL_Texture`
+        - Ensure `ImageRuntime.texture` cleanup is deterministic.
+        - Document lifetime relationship: renderer outlives textures.
 
 ---
 
-## 3) `src/renderable.hxx` — Base Interface
+- [ ] **Phase 2 — Format-Level Correctness & Validation**
 
-### 3.1 Base object contract
+  - [ ] 4. Define spawn-point representation (format-level)
+        - Decide where spawn lives:
+          - Bit flag in `MapCell.id`, or
+          - New flags field (preferred for v2).
+        - Document exact bit layout.
+        - Update spec accordingly.
 
-- [ ] Keep `class Renderable` with virtual render entry.
-- [ ] Confirm render signature supports renderer access (camera/viewport context can be passed directly or supplied by layer state).
+  - [ ] 5. Enforce spawn invariant in loader
+        - Validate **exactly one spawn cell** exists.
+        - Fail fast with clear error message if:
+          - Zero spawn cells.
+          - More than one spawn cell.
 
-### 3.2 Performance guardrail
+  - [ ] 6. Atlas ↔ Map validation contract
+        - During MAPL load:
+          - Validate each cell’s `atlas_record_index` < atlas record count.
+        - Fail fast on invalid indices.
 
-- [ ] Ensure this interface is used for layer-level dispatch, not one virtual call per map tile.
-
-Exit criteria:
-
-- [ ] Base class is stable and minimal.
-
----
-
-## 4) `src/visual_layers.hxx` — OOP Layer Hierarchy
-
-Define class responsibilities before implementation.
-
-### 4.1 `class VisualLayer : public Renderable`
-
-- [ ] Data members:
-  - [ ] common layer controls (e.g., visibility, z/order if needed)
-- [ ] Methods:
-  - [ ] virtual `render(...)` override contract
-
-### 4.2 `class MapLayer : public VisualLayer`
-
-- [ ] Data members:
-  - [ ] `ImageRuntime` (or handle/ref to one)
-  - [ ] `AtlasRuntime`
-  - [ ] `MapRuntime`
-- [ ] Methods (map-specific):
-  - [ ] `render(...)`
-  - [ ] helper to compute visible tile bounds from camera + viewport
-  - [ ] helper to convert tile/world position to destination rect
-
-### 4.3 Stubs for future layers
-
-- [ ] `class SpriteLayer : public VisualLayer`
-- [ ] `class EffectLayer : public VisualLayer`
-- [ ] Keep them minimal now (no accidental feature creep)
-
-Exit criteria:
-
-- [ ] MapLayer holds all map render runtime data in one place.
+  - [ ] 7. Single source of truth for tile size
+        - Eliminate drift between:
+          - `amb::game::TILE_SIZE`
+          - Map-layer tile dimensions
+        - Make tile size come from:
+          - Either format metadata, or
+          - Central constant used everywhere.
 
 ---
 
-## 5) Loader Translation Plan (`src/damb_loader.hxx/.cxx`)
+- [ ] **Phase 3 — Minimal Tooling for Iteration**
 
-Implement this strictly as format-to-runtime conversion.
+  - [ ] 8. Implement minimal `.damb` packer tool
+        - Small script or utility that:
+          - Writes valid header
+          - Writes chunk table (TOC)
+          - Applies correct alignment
+          - Applies CRC / flags policy (even if minimal)
+        - Support:
+          - IMAG
+          - ATLS
+          - MAPL
+        - Produce `sandbox.damb`.
 
-### 5.1 Load sequence
-
-- [ ] Read/validate file header and TOC from `damb_format.hxx` definitions.
-- [ ] Parse chunks in order.
-- [ ] Build temporary decoded chunk state as needed.
-- [ ] Emit final runtime structs for layers.
-- [ ] Discard raw buffers/chunk temporaries immediately after conversion.
-
-### 5.2 Chunk conversion targets
-
-- [ ] `IMAG` → `ImageRuntime.texture`
-- [ ] `ATLS` header + records → `AtlasRuntime.records`
-- [ ] `MAPL` header + cells → `MapRuntime`:
-  - [ ] width/height
-  - [ ] cell size
-  - [ ] flattened map cells (atlas indices)
-
-### 5.3 Validation at load time
-
-- [ ] Validate map cell atlas index range against atlas record count.
-- [ ] Validate map cell vector size equals `width * height`.
-- [ ] Reject unsupported map encodings for now.
-
-Exit criteria:
-
-- [ ] Loader returns runtime-ready layer objects with no format structs required during render.
+  - [ ] 9. Create known-pattern test map
+        - Tiny map (e.g., 8×8 or 16×16).
+        - Obvious tile pattern:
+          - Borders
+          - Diagonal
+          - Repeating atlas indices
+        - Used to detect:
+          - Axis flips
+          - Off-by-one errors
+          - Atlas index bugs
 
 ---
 
-## 6) Ambassador Integration Order (App-Level)
+- [ ] **Phase 4 — Complete Loader → Runtime Translation Chain**
 
-### 6.1 Data ownership
+  - [ ] 10. Load IMAG chunk
+         - Decode image.
+         - Create `SDL_Texture`.
+         - Store in `ImageRuntime`.
 
-- [ ] App holds `std::vector<std::unique_ptr<VisualLayer>>` (or equivalent owning container).
-- [ ] Loader output is inserted as concrete `MapLayer` instances.
+  - [ ] 11. Load ATLS chunk
+         - Parse atlas records.
+         - Store source rects in `AtlasRuntime`.
 
-### 6.2 Render pipeline wiring
+  - [ ] 12. Load MAPL chunk
+         - Parse dimensions.
+         - Validate:
+           - Spawn invariant.
+           - Atlas index bounds.
+         - Build `MapRuntime`.
 
-- [ ] App `render()` loops over layers in order.
-- [ ] For each layer, call `layer->render(...)` with renderer and camera/viewport context.
-
-### 6.3 Camera + viewport state
-
-- [ ] App owns camera position and viewport size.
-- [ ] App updates these before layer render pass.
-
-Exit criteria:
-
-- [ ] Single app-level loop dispatches all layers through shared interface.
-
----
-
-## 7) MapLayer Render Algorithm (Hot Path Checklist)
-
-Implement in this exact order:
-
-1. [ ] Compute visible world rectangle from camera + viewport.
-2. [ ] Compute min/max tile coordinates for visible rectangle.
-3. [ ] Clamp tile range to map bounds.
-4. [ ] Iterate rows then columns across visible range.
-5. [ ] For each tile:
-   - [ ] Read map cell atlas index from flattened vector.
-   - [ ] Resolve source rect from `AtlasRuntime.records[index]`.
-   - [ ] Compute destination rect from tile position + camera.
-   - [ ] Issue `SDL_RenderTexture`.
-
-Performance notes:
-
-- [ ] Keep row-major access contiguous.
-- [ ] Avoid allocations and virtual dispatch inside tile loop.
-- [ ] Avoid pointer chasing for per-cell data.
-
-Exit criteria:
-
-- [ ] Only visible tiles render, using one atlas texture source.
+  - [ ] 13. Return fully populated runtime objects
+         - No placeholder empty structs.
+         - Loader returns usable runtime graph.
 
 ---
 
-## 8) Sanity/Validation Checklist
+- [ ] **Phase 5 — Application Wiring**
 
-- [ ] Map with known pattern draws correctly.
-- [ ] Camera movement updates visible tile region correctly.
-- [ ] Viewport resize does not break bounds/clamping.
-- [ ] No out-of-range atlas access when map data is valid.
-- [ ] Invalid `.damb` map cell indices fail at load time (not render time).
+  - [ ] 14. Add layer ownership to Ambassador
+         - `std::vector<VisualLayerPtr>` in `Ambassador`.
+         - Load map layer during init/startup.
+         - Store layer instance.
+
+  - [ ] 15. Render pipeline iteration
+         - In `render()`:
+           - Iterate layers.
+           - Call each layer’s `render()`.
 
 ---
 
-## 9) Final “Done” Definition
+- [ ] **Phase 6 — Rendering Visible Map**
 
-- [ ] `damb_runtime.hxx` contains finalized minimal runtime structs.
-- [ ] `VisualLayer` OOP hierarchy is in place with `MapLayer` implemented.
-- [ ] Loader fully translates format chunks to runtime containers.
-- [ ] App render path is layer-driven and camera-aware.
-- [ ] Map rendering is visible-bounds-only and uses flattened cell iteration.
+  - [ ] 16. Implement `MapLayer::render()`
+         - Compute visible tile bounds from:
+           - Camera position
+           - Viewport dimensions
+           - Tile size
+         - Render only visible tiles.
+         - Do not draw entire map each frame.
+
+  - [ ] 17. Viewport resize handling
+         - On resize event:
+           - Recalculate visible grid dimensions.
+           - Update any cached viewport math.
+
+---
+
+- [ ] **Phase 7 — Camera & Controls**
+
+  - [ ] 18. Add camera state
+         - Position (world-space).
+         - Optional velocity.
+
+  - [ ] 19. Keyboard input handling
+         - WASD / arrow keys.
+         - Modify camera position per frame.
+
+  - [ ] 20. Use spawn cell as initial origin
+         - On load:
+           - Convert spawn tile → world position.
+           - Initialize camera/player position.
+
+---
+
+- [ ] **Phase 8 — Smoke Tests & Failure Modes**
+
+  - [ ] 21. Good file renders
+         - App launches.
+         - Loads `sandbox.damb`.
+         - Map appears.
+
+  - [ ] 22. Camera pans
+         - Keyboard input moves view.
+
+  - [ ] 23. Invalid files fail fast
+         - Missing spawn.
+         - Duplicate spawn.
+         - Invalid atlas index.
+         - Corrupt chunk offsets.
+
+  - [ ] 24. Render loop confirmed efficient
+         - Only visible tiles drawn.
+         - No full-map iteration.
+
+---
+
+# Milestone Definition – “Sandbox Playable”
+
+Milestone is complete when:
+
+- App builds from clean clone.
+- `sandbox.damb` loads successfully.
+- Map renders on screen.
+- Camera pans with keyboard.
+- Exactly one spawn cell is validated and used.
+- Invalid files fail clearly and immediately.
+- Only visible tiles are rendered.

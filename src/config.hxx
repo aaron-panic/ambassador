@@ -2,7 +2,6 @@
 #define AMB_CONFIG_HXX_INCLUDED
 
 #include "amb_types.hxx"
-#include "dataformat.hxx"
 
 namespace amb{
 // configuration constants
@@ -19,7 +18,7 @@ namespace config {
 } // namespace amb::config
 
 namespace game {
-    extern const u8 TILE_SIZE;
+    extern const u8 MAP_TILE_SIZE;
 }
 
 } // namespace amb

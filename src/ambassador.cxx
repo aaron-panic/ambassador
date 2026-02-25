@@ -52,8 +52,8 @@ bool Ambassador::needUpdate(u64 now) {
 
 void Ambassador::configureGrid(int width, int height) {
     std::cout << "Dimensions: " << width << " X " << height << std::endl;
-    m_viewport_row_sz = width / amb::game::TILE_SIZE + 1;
-    m_viewport_col_sz = height / amb::game::TILE_SIZE + 1;
+    m_viewport_row_sz = width / amb::game::MAP_TILE_SIZE + 1;
+    m_viewport_col_sz = height / amb::game::MAP_TILE_SIZE + 1;
 
     std::cout << "Grid Dimensions: " << m_viewport_row_sz << " X " << m_viewport_col_sz << std::endl;
 }

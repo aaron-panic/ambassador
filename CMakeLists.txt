@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
-find_package(zstd REQUIRED)
 
 add_library(libcore STATIC
     src/config.cxx
@@ -36,7 +35,6 @@ target_link_libraries(ambassador PRIVATE
     libdata
     PkgConfig::SDL3
     PkgConfig::SDL3_IMAGE
-    zstd::libzstd_shared
 )
 
 set_target_properties(ambassador PROPERTIES
@@ -47,7 +45,6 @@ target_link_libraries(dambassador PRIVATE
     libdata
     PkgConfig::SDL3
     PkgConfig::SDL3_IMAGE
-    zstd::libzstd_shared
 )
 
 set_target_properties(dambassador PROPERTIES
