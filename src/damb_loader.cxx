@@ -113,8 +113,15 @@ VisualLayerPtr DambLoader::loadMapLayer(const std::filesystem::path& file_path) 
         runtime_cells.push_back(cell.atlas_record_index);
     }
 
+    const amb::runtime::SpawnPoint spawn_point = map_runtime.defaultSpawnPoint();
+
     ImageRuntime image_runtime {};
     AtlasRuntime atlas_runtime {};
 
-    return std::make_unique<MapLayer>(std::move(image_runtime), std::move(atlas_runtime), std::move(map_runtime));
+    return std::make_unique<MapLayer>(
+        std::move(image_runtime),
+        std::move(atlas_runtime),
+        std::move(map_runtime),
+        spawn_point
+    );
 }
