@@ -39,12 +39,12 @@
           - Zero spawn cells.
           - More than one spawn cell.
 
-  - [ ] 6. Atlas ↔ Map validation contract
+  - [x] 6. Atlas ↔ Map validation contract
         - During MAPL load:
           - Validate each cell’s `atlas_record_index` < atlas record count.
         - Fail fast on invalid indices.
 
-  - [ ] 7. Single source of truth for tile size
+  - [x] 7. Single source of truth for tile size
         - Eliminate drift between:
           - `amb::game::TILE_SIZE`
           - Map-layer tile dimensions
