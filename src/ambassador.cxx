@@ -2,6 +2,7 @@
 #include "config.hxx"
 
 #include <iostream>
+#include <stdexcept>
 
 Ambassador::Ambassador() {
     SDL_SetAppMetadata(
@@ -65,4 +66,22 @@ void Ambassador::configureGrid(int width, int height) {
     m_viewport_col_sz = height / amb::game::MAP_TILE_SIZE + 1;
 
     std::cout << "Grid Dimensions: " << m_viewport_row_sz << " X " << m_viewport_col_sz << std::endl;
+}
+
+SDL_AppResult Ambassador::loadSandbox(const std::filesystem::path& file_path) {
+    if (!std::filesystem::exists(file_path)) {
+        SDL_Log("DAMB file does not exist: %s", file_path.string().c_str());
+        return SDL_APP_FAILURE;
+    }
+
+    try {
+        m_layers.clear();
+        m_layers.emplace_back(m_loader.loadMapLayer(renderer(), file_path));
+    } catch (const std::exception& ex) {
+        SDL_Log("Failed to load DAMB file %s: %s", file_path.string().c_str(), ex.what());
+        return SDL_APP_FAILURE;
+    }
+
+    SDL_Log("Loaded DAMB sandbox file: %s", file_path.string().c_str());
+    return SDL_APP_CONTINUE;
 }

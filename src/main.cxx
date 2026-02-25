@@ -7,7 +7,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     Ambassador *app = new Ambassador();
     *appstate = app;
 
-    return app->checkInit();
+    if (app->checkInit() != SDL_APP_CONTINUE) {
+        return SDL_APP_FAILURE;
+    }
+
+    if (argc < 2) {
+        SDL_Log("Usage: ambassador <sandbox.damb>");
+        return SDL_APP_FAILURE;
+    }
+
+    return app->loadSandbox(argv[1]);
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
