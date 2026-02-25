@@ -11,15 +11,103 @@
 #include <type_traits>
 
 namespace amb {
-    template <typename T>
-    void appendPod(std::vector<u8>& out, const T& pod) {
-        static_assert(std::is_trivially_copyable_v<T>, "appendPod requires POD types.");
-        const auto* begin = reinterpret_cast<const u8*>(&pod);
-        out.insert(out.end(), begin, begin + sizeof(T));
+    namespace {
+        enum class ManifestParseState {
+            top,
+            atlas,
+            map,
+            rows,
+        };
+
+        template <typename T>
+        void appendPod(std::vector<u8>& out, const T& pod) {
+            static_assert(std::is_trivially_copyable_v<T>, "appendPod requires POD types.");
+            const auto* begin = reinterpret_cast<const u8*>(&pod);
+            out.insert(out.end(), begin, begin + sizeof(T));
+        }
+
+        void parseAtlasTileRecord(
+            damb::AtlasRecord& record,
+            bool& has_rect,
+            const std::vector<std::string>& tokens,
+            std::size_t line_number
+        ) {
+            for (std::size_t i = 2; i < tokens.size(); i++) {
+                const auto [key, value] = utility::parseKeyValue(tokens[i], line_number);
+
+                if (key == "rect") {
+                    const std::vector<std::string> values = utility::split(value, ',');
+                    if (values.size() != 4) {
+                        throw std::runtime_error("Line " + std::to_string(line_number) + ": rect requires x,y,w,h.");
+                    }
+                    record.src_x = utility::parseUnsigned16(utility::trim(values[0]), line_number, "tile rect x");
+                    record.src_y = utility::parseUnsigned16(utility::trim(values[1]), line_number, "tile rect y");
+                    record.src_w = utility::parseUnsigned16(utility::trim(values[2]), line_number, "tile rect w");
+                    record.src_h = utility::parseUnsigned16(utility::trim(values[3]), line_number, "tile rect h");
+                    has_rect = true;
+                    continue;
+                }
+
+                if (key == "flags") {
+                    record.flags = utility::parseUnsigned32(value, line_number, "tile flags");
+                    continue;
+                }
+
+                if (key == "anchor") {
+                    const std::vector<std::string> values = utility::split(value, ',');
+                    if (values.size() != 2) {
+                        throw std::runtime_error("Line " + std::to_string(line_number) + ": anchor requires x,y.");
+                    }
+                    record.anchor_x = utility::parseSigned16(utility::trim(values[0]), line_number, "tile anchor x");
+                    record.anchor_y = utility::parseSigned16(utility::trim(values[1]), line_number, "tile anchor y");
+                }
+            }
+        }
+
+        void validateManifest(const damb::ManifestSpec& manifest, ManifestParseState state, bool saw_manifest_header) {
+            if (!saw_manifest_header) {
+                throw std::runtime_error("Manifest is empty or missing `damb_manifest 1` header.");
+            }
+            if (state != ManifestParseState::top) {
+                throw std::runtime_error("Manifest ended before closing all blocks.");
+            }
+            if (!manifest.has_output || !manifest.has_image || !manifest.has_atlas || !manifest.has_map) {
+                throw std::runtime_error("Manifest must define output, image, atlas, and map blocks.");
+            }
+            if (manifest.atlas.image_id != manifest.image.id) {
+                throw std::runtime_error("Atlas image dependency does not match declared image id.");
+            }
+            if (manifest.map.atlas_id != manifest.atlas.id) {
+                throw std::runtime_error("Map atlas dependency does not match declared atlas id.");
+            }
+            if (manifest.map.width == 0 || manifest.map.height == 0) {
+                throw std::runtime_error("Map width and height must be greater than zero.");
+            }
+
+            const u64 expected_cells = static_cast<u64>(manifest.map.width) * static_cast<u64>(manifest.map.height);
+            if (manifest.map.tile_ids.size() != expected_cells) {
+                throw std::runtime_error(
+                    "Map row count mismatch; expected " + std::to_string(expected_cells) +
+                    " cells but parsed " + std::to_string(manifest.map.tile_ids.size()) + "."
+                );
+            }
+            if (manifest.atlas.records.empty()) {
+                throw std::runtime_error("Atlas must define at least one tile record.");
+            }
+
+            for (const u16 tile_index : manifest.map.tile_ids) {
+                if (tile_index >= manifest.atlas.records.size()) {
+                    throw std::runtime_error(
+                        "Map tile index " + std::to_string(tile_index) + " is out of range for atlas record count " +
+                        std::to_string(manifest.atlas.records.size()) + "."
+                    );
+                }
+            }
+        }
     }
 
     void Dambassador::create(const std::filesystem::path& manifest_path) const {
-        const ManifestSpec manifest = parseManifest(manifest_path);
+        const damb::ManifestSpec manifest = parseManifest(manifest_path);
         writeDamb(manifest, manifest_path);
     }
 
@@ -46,21 +134,14 @@ namespace amb {
         throw std::runtime_error("Line " + std::to_string(line_number) + ": unsupported image format: " + value);
     }
 
-    ManifestSpec Dambassador::parseManifest(const std::filesystem::path& manifest_path) const {
+    damb::ManifestSpec Dambassador::parseManifest(const std::filesystem::path& manifest_path) const {
         std::ifstream stream(manifest_path);
         if (!stream.is_open()) {
             throw std::runtime_error("Unable to open manifest file: " + manifest_path.string());
         }
 
-        enum class ParseState {
-            top,
-            atlas,
-            map,
-            rows,
-        };
-
-        ManifestSpec manifest;
-        ParseState state = ParseState::top;
+        damb::ManifestSpec manifest;
+        ManifestParseState state = ManifestParseState::top;
         std::string line;
         std::size_t line_number = 0;
         bool saw_manifest_header = false;
@@ -89,9 +170,9 @@ namespace amb {
                 continue;
             }
 
-            if (state == ParseState::rows) {
+            if (state == ManifestParseState::rows) {
                 if (tokens.size() == 1 && tokens[0] == "endrows") {
-                    state = ParseState::map;
+                    state = ManifestParseState::map;
                     continue;
                 }
 
@@ -113,7 +194,7 @@ namespace amb {
             }
 
             if (tokens[0] == "output") {
-                if (state != ParseState::top || tokens.size() != 2) {
+                if (state != ManifestParseState::top || tokens.size() != 2) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": output line must be `output <path>` at top scope.");
                 }
                 manifest.output_path = tokens[1];
@@ -122,7 +203,7 @@ namespace amb {
             }
 
             if (tokens[0] == "image") {
-                if (state != ParseState::top || tokens.size() != 6) {
+                if (state != ManifestParseState::top || tokens.size() != 6) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": image line must be `image <id> <path> <width> <height> <format>`.");
                 }
 
@@ -136,7 +217,7 @@ namespace amb {
             }
 
             if (tokens[0] == "atlas") {
-                if (state != ParseState::top || tokens.size() != 3) {
+                if (state != ManifestParseState::top || tokens.size() != 3) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": atlas line must be `atlas <id> image=<image_id>`.");
                 }
 
@@ -148,12 +229,12 @@ namespace amb {
                 manifest.atlas.image_id = utility::parseUnsigned16(value, line_number, "atlas image_id");
                 manifest.atlas.records.clear();
                 manifest.has_atlas = true;
-                state = ParseState::atlas;
+                state = ManifestParseState::atlas;
                 continue;
             }
 
             if (tokens[0] == "tile") {
-                if (state != ParseState::atlas) {
+                if (state != ManifestParseState::atlas) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": tile entry is only valid inside atlas block.");
                 }
                 if (tokens.size() < 3) {
@@ -163,31 +244,7 @@ namespace amb {
                 damb::AtlasRecord record {};
                 record.id = utility::parseUnsigned16(tokens[1], line_number, "tile id");
                 bool has_rect = false;
-
-                for (std::size_t i = 2; i < tokens.size(); i++) {
-                    const auto [key, value] = utility::parseKeyValue(tokens[i], line_number);
-
-                    if (key == "rect") {
-                        const std::vector<std::string> values = utility::split(value, ',');
-                        if (values.size() != 4) {
-                            throw std::runtime_error("Line " + std::to_string(line_number) + ": rect requires x,y,w,h.");
-                        }
-                        record.src_x = utility::parseUnsigned16(utility::trim(values[0]), line_number, "tile rect x");
-                        record.src_y = utility::parseUnsigned16(utility::trim(values[1]), line_number, "tile rect y");
-                        record.src_w = utility::parseUnsigned16(utility::trim(values[2]), line_number, "tile rect w");
-                        record.src_h = utility::parseUnsigned16(utility::trim(values[3]), line_number, "tile rect h");
-                        has_rect = true;
-                    } else if (key == "flags") {
-                        record.flags = utility::parseUnsigned32(value, line_number, "tile flags");
-                    } else if (key == "anchor") {
-                        const std::vector<std::string> values = utility::split(value, ',');
-                        if (values.size() != 2) {
-                            throw std::runtime_error("Line " + std::to_string(line_number) + ": anchor requires x,y.");
-                        }
-                        record.anchor_x = utility::parseSigned16(utility::trim(values[0]), line_number, "tile anchor x");
-                        record.anchor_y = utility::parseSigned16(utility::trim(values[1]), line_number, "tile anchor y");
-                    }
-                }
+                parseAtlasTileRecord(record, has_rect, tokens, line_number);
 
                 if (!has_rect) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": tile entry is missing rect=x,y,w,h.");
@@ -198,19 +255,19 @@ namespace amb {
             }
 
             if (tokens[0] == "endatlas") {
-                if (state != ParseState::atlas || tokens.size() != 1) {
+                if (state != ManifestParseState::atlas || tokens.size() != 1) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": unexpected endatlas.");
                 }
-                state = ParseState::top;
+                state = ManifestParseState::top;
                 continue;
             }
 
             if (tokens[0] == "map") {
-                if (state != ParseState::top || tokens.size() != 6) {
+                if (state != ManifestParseState::top || tokens.size() != 6) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": map line must be `map <id> atlas=<id> width=<w> height=<h> z=<z>`.");
                 }
 
-                manifest.map = MapSpec {};
+                manifest.map = damb::MapSpec {};
                 manifest.map.id = utility::parseUnsigned16(tokens[1], line_number, "map id");
 
                 for (std::size_t i = 2; i < tokens.size(); i++) {
@@ -230,68 +287,30 @@ namespace amb {
 
                 manifest.map.tile_ids.clear();
                 manifest.has_map = true;
-                state = ParseState::map;
+                state = ManifestParseState::map;
                 continue;
             }
 
             if (tokens[0] == "rows") {
-                if (state != ParseState::map || tokens.size() != 1) {
+                if (state != ManifestParseState::map || tokens.size() != 1) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": rows block must be inside map.");
                 }
-                state = ParseState::rows;
+                state = ManifestParseState::rows;
                 continue;
             }
 
             if (tokens[0] == "endmap") {
-                if (state != ParseState::map || tokens.size() != 1) {
+                if (state != ManifestParseState::map || tokens.size() != 1) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": unexpected endmap.");
                 }
-                state = ParseState::top;
+                state = ManifestParseState::top;
                 continue;
             }
 
             throw std::runtime_error("Line " + std::to_string(line_number) + ": unknown statement: " + tokens[0]);
         }
 
-        if (!saw_manifest_header) {
-            throw std::runtime_error("Manifest is empty or missing `damb_manifest 1` header.");
-        }
-        if (state != ParseState::top) {
-            throw std::runtime_error("Manifest ended before closing all blocks.");
-        }
-        if (!manifest.has_output || !manifest.has_image || !manifest.has_atlas || !manifest.has_map) {
-            throw std::runtime_error("Manifest must define output, image, atlas, and map blocks.");
-        }
-        if (manifest.atlas.image_id != manifest.image.id) {
-            throw std::runtime_error("Atlas image dependency does not match declared image id.");
-        }
-        if (manifest.map.atlas_id != manifest.atlas.id) {
-            throw std::runtime_error("Map atlas dependency does not match declared atlas id.");
-        }
-        if (manifest.map.width == 0 || manifest.map.height == 0) {
-            throw std::runtime_error("Map width and height must be greater than zero.");
-        }
-
-        const u64 expected_cells = static_cast<u64>(manifest.map.width) * static_cast<u64>(manifest.map.height);
-        if (manifest.map.tile_ids.size() != expected_cells) {
-            throw std::runtime_error(
-                "Map row count mismatch; expected " + std::to_string(expected_cells) +
-                " cells but parsed " + std::to_string(manifest.map.tile_ids.size()) + "."
-            );
-        }
-        if (manifest.atlas.records.empty()) {
-            throw std::runtime_error("Atlas must define at least one tile record.");
-        }
-
-        for (const u16 tile_index : manifest.map.tile_ids) {
-            if (tile_index >= manifest.atlas.records.size()) {
-                throw std::runtime_error(
-                    "Map tile index " + std::to_string(tile_index) + " is out of range for atlas record count " +
-                    std::to_string(manifest.atlas.records.size()) + "."
-                );
-            }
-        }
-
+        validateManifest(manifest, state, saw_manifest_header);
         return manifest;
     }
 
@@ -317,7 +336,10 @@ namespace amb {
         return bytes;
     }
 
-    Dambassador::ChunkBlob Dambassador::buildImageChunk(const ManifestSpec& manifest, const std::filesystem::path& base_dir) const {
+    Dambassador::ChunkBlob Dambassador::buildImageChunk(
+        const damb::ManifestSpec& manifest,
+        const std::filesystem::path& base_dir
+    ) const {
         ChunkBlob chunk;
 
         const std::filesystem::path image_path = base_dir / manifest.image.file_path;
@@ -341,7 +363,7 @@ namespace amb {
         return chunk;
     }
 
-    Dambassador::ChunkBlob Dambassador::buildAtlasChunk(const ManifestSpec& manifest) const {
+    Dambassador::ChunkBlob Dambassador::buildAtlasChunk(const damb::ManifestSpec& manifest) const {
         ChunkBlob chunk;
 
         damb::AtlasChunkHeader header {};
@@ -362,7 +384,7 @@ namespace amb {
         return chunk;
     }
 
-    Dambassador::ChunkBlob Dambassador::buildMapChunk(const ManifestSpec& manifest) const {
+    Dambassador::ChunkBlob Dambassador::buildMapChunk(const damb::ManifestSpec& manifest) const {
         ChunkBlob chunk;
 
         damb::MapLayerChunkHeader header {};
@@ -390,7 +412,7 @@ namespace amb {
         return chunk;
     }
 
-    void Dambassador::writeDamb(const ManifestSpec& manifest, const std::filesystem::path& manifest_path) const {
+    void Dambassador::writeDamb(const damb::ManifestSpec& manifest, const std::filesystem::path& manifest_path) const {
         const std::filesystem::path base_dir = manifest_path.parent_path();
         std::vector<ChunkBlob> chunks;
         chunks.push_back(buildImageChunk(manifest, base_dir));
