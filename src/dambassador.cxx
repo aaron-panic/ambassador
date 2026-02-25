@@ -1,183 +1,46 @@
-#include "format_damb.hxx"
+#include "dambassador.hxx"
 
-#include <algorithm>
-#include <cctype>
+#include "utility_parse.hxx"
+#include "utility_string.hxx"
+
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <limits>
-#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <type_traits>
-#include <vector>
 
 namespace {
-    namespace damb = amb::damb;
-
-    struct ImageSpec {
-        u16 id = 0;
-        std::filesystem::path file_path;
-        u32 width = 0;
-        u32 height = 0;
-        damb::ImageFormat format = damb::ImageFormat::png;
-    };
-
-    struct AtlasSpec {
-        u16 id = 0;
-        u16 image_id = 0;
-        std::vector<damb::AtlasRecord> records;
-    };
-
-    struct MapSpec {
-        u16 id = 0;
-        u16 atlas_id = 0;
-        u32 width = 0;
-        u32 height = 0;
-        i32 z = 0;
-        std::vector<u16> tile_ids;
-    };
-
-    struct ManifestSpec {
-        std::filesystem::path output_path;
-        ImageSpec image;
-        AtlasSpec atlas;
-        MapSpec map;
-        bool has_output = false;
-        bool has_image = false;
-        bool has_atlas = false;
-        bool has_map = false;
-    };
-
-    struct ChunkBlob {
-        damb::TocEntry toc {};
-        std::vector<u8> bytes;
-    };
-
-    std::string trim(const std::string& value) {
-        const auto is_space = [](unsigned char c) { return std::isspace(c) != 0; };
-
-        const auto first = std::find_if_not(value.begin(), value.end(), is_space);
-        if (first == value.end()) {
-            return "";
-        }
-
-        const auto last = std::find_if_not(value.rbegin(), value.rend(), is_space).base();
-        return std::string(first, last);
-    }
-
-    std::vector<std::string> split(const std::string& value, char delimiter) {
-        std::vector<std::string> result;
-        std::stringstream stream(value);
-        std::string token;
-
-        while (std::getline(stream, token, delimiter)) {
-            result.push_back(token);
-        }
-
-        return result;
-    }
-
-    std::vector<std::string> splitWhitespace(const std::string& value) {
-        std::istringstream stream(value);
-        std::vector<std::string> result;
-        std::string token;
-
-        while (stream >> token) {
-            result.push_back(token);
-        }
-
-        return result;
-    }
-
     template <typename T>
-    void appendPod(std::vector<u8>& out, const T& pod) {
+    void appendPod(std::vector<amb::u8>& out, const T& pod) {
         static_assert(std::is_trivially_copyable_v<T>, "appendPod requires POD types.");
-        const auto* begin = reinterpret_cast<const u8*>(&pod);
+        const auto* begin = reinterpret_cast<const amb::u8*>(&pod);
         out.insert(out.end(), begin, begin + sizeof(T));
     }
+}
 
-    std::pair<std::string, std::string> parseKeyValue(const std::string& token, std::size_t line_number) {
-        const std::size_t separator = token.find('=');
-        if (separator == std::string::npos || separator == 0 || separator == token.size() - 1) {
-            throw std::runtime_error("Line " + std::to_string(line_number) + ": expected key=value token.");
-        }
-
-        return {token.substr(0, separator), token.substr(separator + 1)};
+namespace amb {
+    void Dambassador::create(const std::filesystem::path& manifest_path) const {
+        const ManifestSpec manifest = parseManifest(manifest_path);
+        writeDamb(manifest, manifest_path);
     }
 
-    u64 parseUnsigned(const std::string& value, std::size_t line_number, const std::string& field_name) {
-        try {
-            std::size_t consumed = 0;
-            const unsigned long long parsed = std::stoull(value, &consumed, 10);
-            if (consumed != value.size()) {
-                throw std::runtime_error("invalid trailing characters");
-            }
-
-            return static_cast<u64>(parsed);
-        } catch (const std::exception&) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": invalid unsigned integer for " + field_name + "."
-            );
-        }
+    void Dambassador::extract(const std::filesystem::path& damb_path) const {
+        std::cout << "extract not implemented for: " << damb_path.string() << '\n';
     }
 
-    i32 parseSigned32(const std::string& value, std::size_t line_number, const std::string& field_name) {
-        try {
-            std::size_t consumed = 0;
-            const long parsed = std::stol(value, &consumed, 10);
-            if (consumed != value.size()) {
-                throw std::runtime_error("invalid trailing characters");
-            }
-            if (parsed < static_cast<long>(std::numeric_limits<i32>::min()) ||
-                parsed > static_cast<long>(std::numeric_limits<i32>::max())) {
-                throw std::runtime_error("range error");
-            }
-            return static_cast<i32>(parsed);
-        } catch (const std::exception&) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": invalid signed integer for " + field_name + "."
-            );
-        }
+    void Dambassador::inspect(const std::filesystem::path& damb_path) const {
+        std::cout << "inspect not implemented for: " << damb_path.string() << '\n';
     }
 
-    i16 parseSigned16(const std::string& value, std::size_t line_number, const std::string& field_name) {
-        const i32 parsed = parseSigned32(value, line_number, field_name);
-        if (parsed < std::numeric_limits<i16>::min() || parsed > std::numeric_limits<i16>::max()) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": value out of range for i16 field " + field_name + "."
-            );
-        }
-
-        return static_cast<i16>(parsed);
+    void Dambassador::printUsage(std::ostream& out) {
+        out << "Usage:\n"
+            << "  dambassador -c <manifest-file>\n"
+            << "  dambassador -x <damb-file>\n"
+            << "  dambassador -i <damb-file>\n";
     }
 
-    u16 parseUnsigned16(const std::string& value, std::size_t line_number, const std::string& field_name) {
-        const u64 parsed = parseUnsigned(value, line_number, field_name);
-        if (parsed > std::numeric_limits<u16>::max()) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": value out of range for u16 field " + field_name + "."
-            );
-        }
-
-        return static_cast<u16>(parsed);
-    }
-
-    u32 parseUnsigned32(const std::string& value, std::size_t line_number, const std::string& field_name) {
-        const u64 parsed = parseUnsigned(value, line_number, field_name);
-        if (parsed > std::numeric_limits<u32>::max()) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": value out of range for u32 field " + field_name + "."
-            );
-        }
-
-        return static_cast<u32>(parsed);
-    }
-
-    damb::ImageFormat parseImageFormat(const std::string& value, std::size_t line_number) {
+    damb::ImageFormat Dambassador::parseImageFormat(const std::string& value, std::size_t line_number) const {
         if (value == "png") {
             return damb::ImageFormat::png;
         }
@@ -185,7 +48,7 @@ namespace {
         throw std::runtime_error("Line " + std::to_string(line_number) + ": unsupported image format: " + value);
     }
 
-    ManifestSpec parseManifest(const std::filesystem::path& manifest_path) {
+    ManifestSpec Dambassador::parseManifest(const std::filesystem::path& manifest_path) const {
         std::ifstream stream(manifest_path);
         if (!stream.is_open()) {
             throw std::runtime_error("Unable to open manifest file: " + manifest_path.string());
@@ -202,25 +65,24 @@ namespace {
         ParseState state = ParseState::top;
         std::string line;
         std::size_t line_number = 0;
-
         bool saw_manifest_header = false;
 
         while (std::getline(stream, line)) {
             line_number++;
-            const std::string cleaned = trim(line);
+            const std::string cleaned = utility::trim(line);
 
             if (cleaned.empty() || cleaned[0] == ';') {
                 continue;
             }
 
-            const std::vector<std::string> tokens = splitWhitespace(cleaned);
+            const std::vector<std::string> tokens = utility::splitWhitespace(cleaned);
 
             if (!saw_manifest_header) {
                 if (tokens.size() != 2 || tokens[0] != "damb_manifest") {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": first non-comment line must be `damb_manifest 1`.");
                 }
 
-                const u64 version = parseUnsigned(tokens[1], line_number, "manifest version");
+                const u64 version = utility::parseUnsigned(tokens[1], line_number, "manifest version");
                 if (version != 1) {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": only manifest version 1 is supported.");
                 }
@@ -235,7 +97,7 @@ namespace {
                     continue;
                 }
 
-                const std::vector<std::string> row_tokens = split(cleaned, '|');
+                const std::vector<std::string> row_tokens = utility::split(cleaned, '|');
                 if (row_tokens.size() != manifest.map.width) {
                     throw std::runtime_error(
                         "Line " + std::to_string(line_number) + ": row width mismatch; expected " +
@@ -244,8 +106,8 @@ namespace {
                 }
 
                 for (const std::string& cell_token_raw : row_tokens) {
-                    const std::string cell_token = trim(cell_token_raw);
-                    const u16 tile_id = parseUnsigned16(cell_token, line_number, "map tile id");
+                    const std::string cell_token = utility::trim(cell_token_raw);
+                    const u16 tile_id = utility::parseUnsigned16(cell_token, line_number, "map tile id");
                     manifest.map.tile_ids.push_back(tile_id);
                 }
 
@@ -266,10 +128,10 @@ namespace {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": image line must be `image <id> <path> <width> <height> <format>`.");
                 }
 
-                manifest.image.id = parseUnsigned16(tokens[1], line_number, "image id");
+                manifest.image.id = utility::parseUnsigned16(tokens[1], line_number, "image id");
                 manifest.image.file_path = tokens[2];
-                manifest.image.width = parseUnsigned32(tokens[3], line_number, "image width");
-                manifest.image.height = parseUnsigned32(tokens[4], line_number, "image height");
+                manifest.image.width = utility::parseUnsigned32(tokens[3], line_number, "image width");
+                manifest.image.height = utility::parseUnsigned32(tokens[4], line_number, "image height");
                 manifest.image.format = parseImageFormat(tokens[5], line_number);
                 manifest.has_image = true;
                 continue;
@@ -280,12 +142,12 @@ namespace {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": atlas line must be `atlas <id> image=<image_id>`.");
                 }
 
-                manifest.atlas.id = parseUnsigned16(tokens[1], line_number, "atlas id");
-                const auto [key, value] = parseKeyValue(tokens[2], line_number);
+                manifest.atlas.id = utility::parseUnsigned16(tokens[1], line_number, "atlas id");
+                const auto [key, value] = utility::parseKeyValue(tokens[2], line_number);
                 if (key != "image") {
                     throw std::runtime_error("Line " + std::to_string(line_number) + ": atlas requires image=<image_id>.");
                 }
-                manifest.atlas.image_id = parseUnsigned16(value, line_number, "atlas image_id");
+                manifest.atlas.image_id = utility::parseUnsigned16(value, line_number, "atlas image_id");
                 manifest.atlas.records.clear();
                 manifest.has_atlas = true;
                 state = ParseState::atlas;
@@ -301,31 +163,31 @@ namespace {
                 }
 
                 damb::AtlasRecord record {};
-                record.id = parseUnsigned16(tokens[1], line_number, "tile id");
+                record.id = utility::parseUnsigned16(tokens[1], line_number, "tile id");
                 bool has_rect = false;
 
                 for (std::size_t i = 2; i < tokens.size(); i++) {
-                    const auto [key, value] = parseKeyValue(tokens[i], line_number);
+                    const auto [key, value] = utility::parseKeyValue(tokens[i], line_number);
 
                     if (key == "rect") {
-                        const std::vector<std::string> values = split(value, ',');
+                        const std::vector<std::string> values = utility::split(value, ',');
                         if (values.size() != 4) {
                             throw std::runtime_error("Line " + std::to_string(line_number) + ": rect requires x,y,w,h.");
                         }
-                        record.src_x = parseUnsigned16(trim(values[0]), line_number, "tile rect x");
-                        record.src_y = parseUnsigned16(trim(values[1]), line_number, "tile rect y");
-                        record.src_w = parseUnsigned16(trim(values[2]), line_number, "tile rect w");
-                        record.src_h = parseUnsigned16(trim(values[3]), line_number, "tile rect h");
+                        record.src_x = utility::parseUnsigned16(utility::trim(values[0]), line_number, "tile rect x");
+                        record.src_y = utility::parseUnsigned16(utility::trim(values[1]), line_number, "tile rect y");
+                        record.src_w = utility::parseUnsigned16(utility::trim(values[2]), line_number, "tile rect w");
+                        record.src_h = utility::parseUnsigned16(utility::trim(values[3]), line_number, "tile rect h");
                         has_rect = true;
                     } else if (key == "flags") {
-                        record.flags = parseUnsigned32(value, line_number, "tile flags");
+                        record.flags = utility::parseUnsigned32(value, line_number, "tile flags");
                     } else if (key == "anchor") {
-                        const std::vector<std::string> values = split(value, ',');
+                        const std::vector<std::string> values = utility::split(value, ',');
                         if (values.size() != 2) {
                             throw std::runtime_error("Line " + std::to_string(line_number) + ": anchor requires x,y.");
                         }
-                        record.anchor_x = parseSigned16(trim(values[0]), line_number, "tile anchor x");
-                        record.anchor_y = parseSigned16(trim(values[1]), line_number, "tile anchor y");
+                        record.anchor_x = utility::parseSigned16(utility::trim(values[0]), line_number, "tile anchor x");
+                        record.anchor_y = utility::parseSigned16(utility::trim(values[1]), line_number, "tile anchor y");
                     }
                 }
 
@@ -351,23 +213,24 @@ namespace {
                 }
 
                 manifest.map = MapSpec {};
-                manifest.map.id = parseUnsigned16(tokens[1], line_number, "map id");
+                manifest.map.id = utility::parseUnsigned16(tokens[1], line_number, "map id");
 
                 for (std::size_t i = 2; i < tokens.size(); i++) {
-                    const auto [key, value] = parseKeyValue(tokens[i], line_number);
+                    const auto [key, value] = utility::parseKeyValue(tokens[i], line_number);
                     if (key == "atlas") {
-                        manifest.map.atlas_id = parseUnsigned16(value, line_number, "map atlas_id");
+                        manifest.map.atlas_id = utility::parseUnsigned16(value, line_number, "map atlas_id");
                     } else if (key == "width") {
-                        manifest.map.width = parseUnsigned32(value, line_number, "map width");
+                        manifest.map.width = utility::parseUnsigned32(value, line_number, "map width");
                     } else if (key == "height") {
-                        manifest.map.height = parseUnsigned32(value, line_number, "map height");
+                        manifest.map.height = utility::parseUnsigned32(value, line_number, "map height");
                     } else if (key == "z") {
-                        manifest.map.z = parseSigned32(value, line_number, "map z");
+                        manifest.map.z = utility::parseSigned32(value, line_number, "map z");
                     } else {
                         throw std::runtime_error("Line " + std::to_string(line_number) + ": unknown map field: " + key);
                     }
                 }
 
+                manifest.map.tile_ids.clear();
                 manifest.has_map = true;
                 state = ParseState::map;
                 continue;
@@ -434,7 +297,7 @@ namespace {
         return manifest;
     }
 
-    std::vector<u8> readFileBytes(const std::filesystem::path& path) {
+    std::vector<u8> Dambassador::readFileBytes(const std::filesystem::path& path) const {
         std::ifstream stream(path, std::ios::binary);
         if (!stream.is_open()) {
             throw std::runtime_error("Unable to open file: " + path.string());
@@ -456,7 +319,7 @@ namespace {
         return bytes;
     }
 
-    ChunkBlob buildImageChunk(const ManifestSpec& manifest, const std::filesystem::path& base_dir) {
+    Dambassador::ChunkBlob Dambassador::buildImageChunk(const ManifestSpec& manifest, const std::filesystem::path& base_dir) const {
         ChunkBlob chunk;
 
         const std::filesystem::path image_path = base_dir / manifest.image.file_path;
@@ -480,7 +343,7 @@ namespace {
         return chunk;
     }
 
-    ChunkBlob buildAtlasChunk(const ManifestSpec& manifest) {
+    Dambassador::ChunkBlob Dambassador::buildAtlasChunk(const ManifestSpec& manifest) const {
         ChunkBlob chunk;
 
         damb::AtlasChunkHeader header {};
@@ -501,7 +364,7 @@ namespace {
         return chunk;
     }
 
-    ChunkBlob buildMapChunk(const ManifestSpec& manifest) {
+    Dambassador::ChunkBlob Dambassador::buildMapChunk(const ManifestSpec& manifest) const {
         ChunkBlob chunk;
 
         damb::MapLayerChunkHeader header {};
@@ -529,7 +392,7 @@ namespace {
         return chunk;
     }
 
-    void writeDamb(const ManifestSpec& manifest, const std::filesystem::path& manifest_path) {
+    void Dambassador::writeDamb(const ManifestSpec& manifest, const std::filesystem::path& manifest_path) const {
         const std::filesystem::path base_dir = manifest_path.parent_path();
         std::vector<ChunkBlob> chunks;
         chunks.push_back(buildImageChunk(manifest, base_dir));
@@ -595,40 +458,5 @@ namespace {
         }
 
         std::cout << "Wrote " << output_path.string() << " (" << file_size << " bytes).\n";
-    }
-
-    void printUsage() {
-        std::cout << "Usage:\n"
-                  << "  dambassador -c <manifest-file>\n"
-                  << "  dambassador -x <damb-file>\n";
-    }
-}
-
-int main(int argc, char** argv) {
-    try {
-        if (argc != 3) {
-            printUsage();
-            return 1;
-        }
-
-        const std::string command = argv[1];
-
-        if (command == "-c") {
-            const std::filesystem::path manifest_path = argv[2];
-            const ManifestSpec manifest = parseManifest(manifest_path);
-            writeDamb(manifest, manifest_path);
-            return 0;
-        }
-
-        if (command == "-x") {
-            std::cout << "extract not implemented\n";
-            return 0;
-        }
-
-        printUsage();
-        return 1;
-    } catch (const std::exception& ex) {
-        std::cerr << "dambassador error: " << ex.what() << '\n';
-        return 1;
     }
 }
