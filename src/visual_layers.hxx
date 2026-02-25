@@ -19,10 +19,12 @@ class MapLayer final : public VisualLayer {
 public:
     MapLayer(ImageRuntime image_runtime,
              AtlasRuntime atlas_runtime,
-             MapRuntime map_runtime)
+             MapRuntime map_runtime,
+             amb::runtime::SpawnPoint spawn_point)
     : m_image_runtime(std::move(image_runtime)),
       m_atlas_runtime(std::move(atlas_runtime)),
-      m_map_runtime(std::move(map_runtime)) {}
+      m_map_runtime(std::move(map_runtime)),
+      m_spawn_point(std::move(spawn_point)) {}
 
     void render(SDL_Renderer* renderer) override {
         (void)renderer;
@@ -39,10 +41,14 @@ public:
     MapRuntime& map() noexcept { return m_map_runtime; }
     const MapRuntime& map() const noexcept { return m_map_runtime; }
 
+    amb::runtime::SpawnPoint& spawnPoint() noexcept { return m_spawn_point; }
+    const amb::runtime::SpawnPoint& spawnPoint() const noexcept { return m_spawn_point; }
+
 private:
     ImageRuntime m_image_runtime;
     AtlasRuntime m_atlas_runtime;
     MapRuntime m_map_runtime;
+    amb::runtime::SpawnPoint m_spawn_point;
 };
 
 class SpriteLayer : public VisualLayer {
