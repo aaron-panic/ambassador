@@ -4,8 +4,9 @@ project(ambassador LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(SDL3 REQUIRED)
-find_package(SDL3_image REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
 find_package(zstd REQUIRED)
 
 add_library(libcore STATIC
@@ -17,7 +18,6 @@ add_library(libcore STATIC
 )
 
 add_library(libdata STATIC
-    src/scenedata.cxx
     src/damb_runtime.cxx
     src/damb_loader.cxx
 )
@@ -34,8 +34,8 @@ add_executable(dambassador
 target_link_libraries(ambassador PRIVATE
     libcore
     libdata
-    SDL3::SDL3
-    SDL3_image::SDL3_image
+    PkgConfig::SDL3
+    PkgConfig::SDL3_IMAGE
     zstd::libzstd_shared
 )
 
@@ -45,8 +45,8 @@ set_target_properties(ambassador PROPERTIES
 
 target_link_libraries(dambassador PRIVATE
     libdata
-    SDL3::SDL3
-    SDL3_image::SDL3_image
+    PkgConfig::SDL3
+    PkgConfig::SDL3_IMAGE
     zstd::libzstd_shared
 )
 
