@@ -26,7 +26,7 @@
 
 ---
 
-- [ ] **Phase 2 — Format-Level Correctness & Validation**
+- [x] **Phase 2 — Format-Level Correctness & Validation**
 
   - [x] 4. Define spawn-point representation (format-level)
         - Spawn needs to live in ENTS layer not yet implemented
@@ -92,7 +92,7 @@
          - Parse atlas records.
          - Store source rects in `AtlasRuntime`.
 
-  - [ ] 12. Load MAPL chunk
+  - [x] 12. Load MAPL chunk
          - Parse dimensions.
          - Validate:
            - Spawn invariant.
@@ -102,6 +102,7 @@
   - [ ] 13. Return fully populated runtime objects
          - No placeholder empty structs.
          - Loader returns usable runtime graph.
+         - Refactor into coherent file structure, object oriented design
 
 ---
 
