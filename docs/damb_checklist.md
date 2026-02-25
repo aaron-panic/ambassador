@@ -54,9 +54,9 @@
 
 ---
 
-- [ ] **Phase 3 — Minimal Tooling for Iteration**
+- [x] **Phase 3 — Minimal Tooling for Iteration**
 
-  - [ ] 8. Implement minimal `.damb` packer tool
+  - [x] 8. Implement minimal `.damb` packer tool
         - Small script or utility that:
           - Writes valid header
           - Writes chunk table (TOC)
@@ -68,7 +68,7 @@
           - MAPL
         - Produce `sandbox.damb`.
 
-  - [ ] 9. Create known-pattern test map
+  - [x] 9. Create known-pattern test map
         - Tiny map (e.g., 8×8 or 16×16).
         - Obvious tile pattern:
           - Borders
