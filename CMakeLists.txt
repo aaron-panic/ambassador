@@ -18,6 +18,8 @@ add_library(libcore STATIC
 
 add_library(libdata STATIC
     src/scenedata.cxx
+    src/damb_runtime.cxx
+    src/damb_loader.cxx
 )
 
 # Release Binary
