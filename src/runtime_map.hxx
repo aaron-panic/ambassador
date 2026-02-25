@@ -10,6 +10,14 @@
 
 namespace amb::runtime {
     const std::size_t INDEX_NPOS = std::numeric_limits<std::size_t>::max();
+
+    struct SpawnPoint {
+        std::size_t tile_x = 0;
+        std::size_t tile_y = 0;
+        float world_x = 0.0f;
+        float world_y = 0.0f;
+        bool is_fallback = true;
+    };
 }
 
 class MapRuntime {
@@ -122,6 +130,24 @@ public:
 
     inline std::vector<Cell>& cells() noexcept { return atlas_idx; }
     inline const std::vector<Cell>& cells() const noexcept { return atlas_idx; }
+
+    inline amb::runtime::SpawnPoint defaultSpawnPoint() const noexcept {
+        amb::runtime::SpawnPoint spawn {};
+
+        if (m_width == 0 || m_height == 0 || m_tile_width == 0 || m_tile_height == 0) {
+            return spawn;
+        }
+
+        // Choose the map midpoint tile. For even dimensions, this picks the upper-left tile
+        // of the four center tiles; ENTS-based spawn data will override this later.
+        spawn.tile_x = m_width / 2;
+        spawn.tile_y = m_height / 2;
+
+        spawn.world_x = (static_cast<float>(spawn.tile_x) + 0.5f) * static_cast<float>(m_tile_width);
+        spawn.world_y = (static_cast<float>(spawn.tile_y) + 0.5f) * static_cast<float>(m_tile_height);
+        spawn.is_fallback = true;
+        return spawn;
+    }
 
 private:
     size_t m_width;
