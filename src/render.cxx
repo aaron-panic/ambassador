@@ -3,7 +3,7 @@
 
 SDL_AppResult Ambassador::render() {
     if (!SDL_SetRenderDrawColor(
-        g_renderer,
+        renderer(),
         (u8)255,
         (u8)0,
         (u8)0,
@@ -13,8 +13,8 @@ SDL_AppResult Ambassador::render() {
         return SDL_APP_FAILURE;
     }
 
-    SDL_RenderClear(Ambassador::g_renderer);
-    SDL_RenderPresent(Ambassador::g_renderer);
+    SDL_RenderClear(renderer());
+    SDL_RenderPresent(renderer());
 
     // for (const auto& x : m_layers)
     return SDL_APP_CONTINUE;

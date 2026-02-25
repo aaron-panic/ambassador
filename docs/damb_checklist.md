@@ -17,7 +17,7 @@
           - Move definitions into header (true inline), or
           - Remove `inline` and keep normal out-of-line definitions.
 
-  - [ ] 3. Define resource lifetime policy
+  - [x] 3. Define resource lifetime policy
         - Clearly define ownership of:
           - `SDL_Renderer`
           - `SDL_Texture`

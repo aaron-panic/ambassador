@@ -11,8 +11,8 @@ public:
     Ambassador();
     ~Ambassador();
 
-    static SDL_Window *g_window;
-    static SDL_Renderer *g_renderer;
+    SDL_Window* window() const noexcept { return m_window.get(); }
+    SDL_Renderer* renderer() const noexcept { return m_renderer.get(); }
 
     SDL_AppResult checkInit();
 
@@ -27,6 +27,9 @@ public:
 
     void configureGrid(int width, int height);
 private:
+    WindowPtr m_window;
+    RendererPtr m_renderer;
+
     bool m_initErrors = false;
     u64 m_lasttick = 0;
 

@@ -1,5 +1,4 @@
 #include "config.hxx"
-#include "ambassador.hxx"
 
 // configuration definitions
 
@@ -18,7 +17,3 @@ const u64 amb::config::UPDATE_SPEED = 1000 / GAME_SPEED;
 
 // game constants
 const u8 amb::game::MAP_TILE_SIZE = 50;
-
-// initalize static members
-SDL_Window* Ambassador::g_window = nullptr;
-SDL_Renderer* Ambassador::g_renderer = nullptr;
