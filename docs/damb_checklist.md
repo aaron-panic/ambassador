@@ -11,7 +11,7 @@
         - Ensure SDL3 pkg-config / find_package works on clean system.
         - Verify clean clone → configure → build works without manual tweaks.
 
-  - [ ] 2. Fix ODR / linkage correctness
+  - [x] 2. Fix ODR / linkage correctness
         - `MapRuntime` methods currently marked `inline` in header but defined in `.cxx`.
         - Either:
           - Move definitions into header (true inline), or
