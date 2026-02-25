@@ -9,7 +9,7 @@ class DambLoader {
 public:
     DambLoader() = default;
 
-    VisualLayerPtr loadMapLayer(const std::filesystem::path& file_path) const;
+    VisualLayerPtr loadMapLayer(SDL_Renderer* renderer, const std::filesystem::path& file_path) const;
 };
 
 #endif
