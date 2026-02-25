@@ -15,32 +15,41 @@ Ambassador::Ambassador() {
         SDL_Log("Video Initialization Error: %s", SDL_GetError());
     }
 
+    SDL_Window* raw_window = nullptr;
+    SDL_Renderer* raw_renderer = nullptr;
+
     if (!m_initErrors && !SDL_CreateWindowAndRenderer(
         amb::config::APP_TITLE,
         amb::config::DEFAULT_APP_WIDTH,
         amb::config::DEFAULT_APP_HEIGHT,
         SDL_WINDOW_RESIZABLE,
-        &Ambassador::g_window,
-        &Ambassador::g_renderer
+        &raw_window,
+        &raw_renderer
     )) {
         m_initErrors = true;
         SDL_Log("Window/Renderer Creation Error: %s", SDL_GetError());
     }
 
-    SDL_SetRenderLogicalPresentation(
-        g_renderer,
+    if (!m_initErrors) {
+        m_window.reset(raw_window);
+        m_renderer.reset(raw_renderer);
+    }
+
+    if (!m_initErrors && !SDL_SetRenderLogicalPresentation(
+        renderer(),
         amb::config::DEFAULT_APP_WIDTH,
         amb::config::DEFAULT_APP_HEIGHT,
         SDL_LOGICAL_PRESENTATION_LETTERBOX
-    );
+    )) {
+        m_initErrors = true;
+        SDL_Log("Logical presentation setup failed: %s", SDL_GetError());
+    }
 
     configureGrid(amb::config::DEFAULT_APP_WIDTH, amb::config::DEFAULT_APP_HEIGHT);
     m_lasttick = SDL_GetTicks();
 }
 
-Ambassador::~Ambassador() {
-    // foo
-}
+Ambassador::~Ambassador() = default;
 
 SDL_AppResult Ambassador::checkInit() {
     return (m_initErrors) ? SDL_APP_FAILURE : SDL_APP_CONTINUE;

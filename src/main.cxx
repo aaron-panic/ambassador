@@ -21,6 +21,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+    (void)result;
     Ambassador *app = (Ambassador *)appstate;
     delete app;
 }
