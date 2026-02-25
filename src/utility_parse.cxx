@@ -4,6 +4,14 @@
 #include <stdexcept>
 
 namespace amb::utility {
+    namespace {
+        [[noreturn]] void throwInvalidInteger(std::size_t line_number, const std::string& field_name, const std::string& kind) {
+            throw std::runtime_error(
+                "Line " + std::to_string(line_number) + ": invalid " + kind + " integer for " + field_name + "."
+            );
+        }
+    }
+
     std::pair<std::string, std::string> parseKeyValue(const std::string& token, std::size_t line_number) {
         const std::size_t separator = token.find('=');
         if (separator == std::string::npos || separator == 0 || separator == token.size() - 1) {
@@ -23,9 +31,7 @@ namespace amb::utility {
 
             return static_cast<u64>(parsed);
         } catch (const std::exception&) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": invalid unsigned integer for " + field_name + "."
-            );
+            throwInvalidInteger(line_number, field_name, "unsigned");
         }
     }
 
@@ -42,9 +48,7 @@ namespace amb::utility {
             }
             return static_cast<i32>(parsed);
         } catch (const std::exception&) {
-            throw std::runtime_error(
-                "Line " + std::to_string(line_number) + ": invalid signed integer for " + field_name + "."
-            );
+            throwInvalidInteger(line_number, field_name, "signed");
         }
     }
 

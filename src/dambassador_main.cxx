@@ -5,17 +5,9 @@
 #include <iostream>
 #include <string>
 
-int main(int argc, char** argv) {
-    try {
+namespace amb::damb {
+    int runDambassador(const std::string& command, const std::filesystem::path& input_path) {
         amb::Dambassador dambassador;
-
-        if (argc != 3) {
-            amb::Dambassador::printUsage(std::cout);
-            return 1;
-        }
-
-        const std::string command = argv[1];
-        const std::filesystem::path input_path = argv[2];
 
         if (command == "-c") {
             dambassador.create(input_path);
@@ -34,6 +26,17 @@ int main(int argc, char** argv) {
 
         amb::Dambassador::printUsage(std::cout);
         return 1;
+    }
+}
+
+int main(int argc, char** argv) {
+    try {
+        if (argc != 3) {
+            amb::Dambassador::printUsage(std::cout);
+            return 1;
+        }
+
+        return amb::damb::runDambassador(argv[1], argv[2]);
     } catch (const std::exception& ex) {
         std::cerr << "dambassador error: " << ex.what() << '\n';
         return 1;
