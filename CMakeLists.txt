@@ -16,7 +16,6 @@ set(AMBCORE_HEADERS
 
 set(AMBCORE_SOURCES
     src/ambassador.cxx
-    src/config.cxx
     src/event.cxx
     src/loop.cxx
     src/render.cxx
@@ -31,6 +30,7 @@ set(AMBUTILITY_HEADERS
 set(AMBUTILITY_SOURCES
     src/utility_parse.cxx
     src/utility_string.cxx
+    src/config.cxx
 )
 
 set(AMBDATA_HEADERS
@@ -38,7 +38,6 @@ set(AMBDATA_HEADERS
     src/damb_spec.hxx
     src/format_damb.hxx
     src/runtime_atlas.hxx
-    src/runtime_damb.hxx
     src/runtime_image.hxx
     src/runtime_map.hxx
     src/runtime_object.hxx
