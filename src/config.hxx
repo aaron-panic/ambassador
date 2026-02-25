@@ -3,8 +3,7 @@
 
 #include "amb_types.hxx"
 
-namespace amb{
-// configuration constants
+namespace amb {
 namespace config {
     extern const char* APP_TITLE;
     extern const char* APP_VERSION;
@@ -15,12 +14,16 @@ namespace config {
 
     extern const u64 GAME_SPEED;
     extern const u64 UPDATE_SPEED;
-} // namespace amb::config
+}
 
 namespace game {
     extern const u8 MAP_TILE_SIZE;
 }
 
-} // namespace amb
+namespace data {
+    extern const u8 CHUNK_TYPE_LENGTH;
+    extern const u8 MAGIC_LENGTH;
+}
+}
 
 #endif
