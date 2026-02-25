@@ -49,6 +49,15 @@ namespace {
         return static_cast<std::size_t>(count);
     }
 
+    u64 checkedMapPayloadSize(const std::size_t cell_count) {
+        const u64 payload_size = static_cast<u64>(cell_count) * static_cast<u64>(damb::MAPCELL_SIZE);
+        if (payload_size > static_cast<u64>(std::numeric_limits<std::streamsize>::max())) {
+            throw std::runtime_error("MAPL payload is too large for stream I/O on this platform.");
+        }
+
+        return payload_size;
+    }
+
     bool hasChunkType(const char (&type)[4], const char* expected) {
         return std::memcmp(type, expected, 4) == 0;
     }
@@ -286,8 +295,23 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
         throw std::runtime_error("TOC MAPL entry points to a non-MAPL chunk.");
     }
 
+    if (mapl_header.header.id != mapl_entry.id) {
+        throw std::runtime_error("TOC MAPL entry id does not match MAPL chunk header id.");
+    }
+
     if (mapl_header.encoding != damb::MapEncoding::raw) {
         throw std::runtime_error("Only raw map encoding is supported.");
+    }
+
+    if (mapl_entry.size < damb::MAPL_HEADER_SIZE) {
+        throw std::runtime_error("MAPL TOC size is smaller than MAPL header size.");
+    }
+
+    const std::size_t cell_count = checkedCellCount(mapl_header.width, mapl_header.height);
+    const u64 expected_payload_size = checkedMapPayloadSize(cell_count);
+    const u64 map_payload_size = mapl_entry.size - static_cast<u64>(damb::MAPL_HEADER_SIZE);
+    if (map_payload_size != expected_payload_size) {
+        throw std::runtime_error("MAPL payload size does not match width/height cell count.");
     }
 
     const damb::TocEntry atlas_entry = findAtlasEntryByIdBeforeMapLayer(
@@ -311,19 +335,13 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
         throw std::runtime_error("Failed to seek to MAPL cells.");
     }
 
-    const std::size_t cell_count = checkedCellCount(mapl_header.width, mapl_header.height);
-
-    std::vector<damb::MapCell> cells(cell_count);
-    stream.read(reinterpret_cast<char*>(cells.data()), static_cast<std::streamsize>(cells.size() * sizeof(damb::MapCell)));
-    if (!stream) {
-        throw std::runtime_error("Failed to read MAPL cells.");
-    }
-
     MapRuntime map_runtime(mapl_header.width, mapl_header.height);
     auto& runtime_cells = map_runtime.cells();
     runtime_cells.reserve(cell_count);
 
-    for (const damb::MapCell& cell : cells) {
+    for (std::size_t i = 0; i < cell_count; ++i) {
+        const damb::MapCell cell = readPod<damb::MapCell>(stream, "MAPL cell");
+
         if (cell.atlas_record_index >= atlas_runtime_data.metadata.asset_count) {
             throw std::runtime_error(
                 "MAPL cell atlas_record_index out of range for referenced atlas."
