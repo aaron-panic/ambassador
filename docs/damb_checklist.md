@@ -118,7 +118,7 @@
            - Iterate layers.
            - Call each layer’s `render()`.
 
-  - [ ] 15.1. Separate Ambassador bootstrap from runtime orchestration
+  - [ ] 16. Separate Ambassador bootstrap from runtime orchestration
          - Move initialization/bootstrap concerns out of `Ambassador` where practical.
          - Isolate viewport/runtime state orchestration for cleaner lifecycle boundaries.
          - Remove temporary debug I/O from core application object.
@@ -127,7 +127,7 @@
 
 - [ ] **Phase 6 — Rendering Visible Map**
 
-  - [ ] 16. Implement `MapLayer::render()`
+  - [ ] 17. Implement `MapLayer::render()`
          - Compute visible tile bounds from:
            - Camera position
            - Viewport dimensions
@@ -135,7 +135,7 @@
          - Render only visible tiles.
          - Do not draw entire map each frame.
 
-  - [ ] 17. Viewport resize handling
+  - [ ] 18. Viewport resize handling
          - On resize event:
            - Recalculate visible grid dimensions.
            - Update any cached viewport math.
@@ -144,15 +144,15 @@
 
 - [ ] **Phase 7 — Camera & Controls**
 
-  - [ ] 18. Add camera state
+  - [ ] 19. Add camera state
          - Position (world-space).
          - Optional velocity.
 
-  - [ ] 19. Keyboard input handling
+  - [ ] 20. Keyboard input handling
          - WASD / arrow keys.
          - Modify camera position per frame.
 
-  - [ ] 20. Use spawn cell as initial origin
+  - [ ] 21. Use spawn cell as initial origin
          - On load:
            - Convert spawn tile → world position.
            - Initialize camera/player position.
@@ -161,21 +161,21 @@
 
 - [ ] **Phase 8 — Smoke Tests & Failure Modes**
 
-  - [ ] 21. Good file renders
+  - [ ] 22. Good file renders
          - App launches.
          - Loads `sandbox.damb`.
          - Map appears.
 
-  - [ ] 22. Camera pans
+  - [ ] 23. Camera pans
          - Keyboard input moves view.
 
-  - [ ] 23. Invalid files fail fast
+  - [ ] 24. Invalid files fail fast
          - Missing spawn.
          - Duplicate spawn.
          - Invalid atlas index.
          - Corrupt chunk offsets.
 
-  - [ ] 24. Render loop confirmed efficient
+  - [ ] 25. Render loop confirmed efficient
          - Only visible tiles drawn.
          - No full-map iteration.
 

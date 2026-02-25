@@ -1,7 +1,9 @@
 #ifndef VISUAL_LAYERS_HXX_INCLUDED
 #define VISUAL_LAYERS_HXX_INCLUDED
 
-#include "runtime_damb.hxx"
+#include "runtime_image.hxx"
+#include "runtime_atlas.hxx"
+#include "runtime_map.hxx"
 
 #include <memory>
 #include <utility>
