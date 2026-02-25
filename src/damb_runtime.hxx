@@ -48,6 +48,9 @@ public:
     inline size_t worldToTileY(float world_y) const noexcept;
     inline size_t indexOfTile(size_t tile_x, size_t tile_y) const noexcept;
 
+    inline std::vector<Cell>& cells() noexcept { return atlas_idx; }
+    inline const std::vector<Cell>& cells() const noexcept { return atlas_idx; }
+
 private:    
     size_t m_width;
     size_t m_height;
