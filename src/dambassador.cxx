@@ -10,16 +10,14 @@
 #include <string>
 #include <type_traits>
 
-namespace {
+namespace amb {
     template <typename T>
-    void appendPod(std::vector<amb::u8>& out, const T& pod) {
+    void appendPod(std::vector<u8>& out, const T& pod) {
         static_assert(std::is_trivially_copyable_v<T>, "appendPod requires POD types.");
-        const auto* begin = reinterpret_cast<const amb::u8*>(&pod);
+        const auto* begin = reinterpret_cast<const u8*>(&pod);
         out.insert(out.end(), begin, begin + sizeof(T));
     }
-}
 
-namespace amb {
     void Dambassador::create(const std::filesystem::path& manifest_path) const {
         const ManifestSpec manifest = parseManifest(manifest_path);
         writeDamb(manifest, manifest_path);
