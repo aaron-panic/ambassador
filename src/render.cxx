@@ -14,8 +14,12 @@ SDL_AppResult Ambassador::render() {
     }
 
     SDL_RenderClear(renderer());
+
+    for (const auto& layer : m_layers) {
+        layer->render(renderer());
+    }
+
     SDL_RenderPresent(renderer());
 
-    // for (const auto& x : m_layers)
     return SDL_APP_CONTINUE;
 }
