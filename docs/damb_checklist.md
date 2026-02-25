@@ -29,13 +29,11 @@
 - [ ] **Phase 2 — Format-Level Correctness & Validation**
 
   - [ ] 4. Define spawn-point representation (format-level)
-        - Decide where spawn lives:
-          - Bit flag in `MapCell.id`, or
-          - New flags field (preferred for v2).
-        - Document exact bit layout.
-        - Update spec accordingly.
+        - Spawn needs to live in ENTS layer not yet implemented
+        - Defer implementation for now.
+        - Create fallback spawn point of map centre.
 
-  - [ ] 5. Enforce spawn invariant in loader
+  - [ ] 5. Enforce spawn invariant in loader (DEFERRED)
         - Validate **exactly one spawn cell** exists.
         - Fail fast with clear error message if:
           - Zero spawn cells.
