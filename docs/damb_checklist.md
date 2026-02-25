@@ -81,7 +81,7 @@
 
 ---
 
-- [ ] **Phase 4 — Complete Loader → Runtime Translation Chain**
+- [x] **Phase 4 — Complete Loader → Runtime Translation Chain**
 
   - [x] 10. Load IMAG chunk
          - Decode image.
@@ -99,7 +99,7 @@
            - Atlas index bounds.
          - Build `MapRuntime`.
 
-  - [ ] 13. Return fully populated runtime objects
+  - [x] 13. Return fully populated runtime objects
          - No placeholder empty structs.
          - Loader returns usable runtime graph.
          - Refactor into coherent file structure, object oriented design
