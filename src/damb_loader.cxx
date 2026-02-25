@@ -1,6 +1,6 @@
 #include "damb_loader.hxx"
 
-#include "damb_format.hxx"
+#include "format_damb.hxx"
 
 #include <cstring>
 #include <fstream>
