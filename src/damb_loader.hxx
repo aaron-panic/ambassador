@@ -1,10 +1,8 @@
 #ifndef DAMB_LOADER_HXX_INCLUDED
 #define DAMB_LOADER_HXX_INCLUDED
 
-#include "damb_atls.hxx"
-#include "damb_imag.hxx"
 #include "damb_mapl.hxx"
-#include "format_damb.hxx"
+#include "damb_format.hxx"
 #include "visual_layers.hxx"
 
 #include <filesystem>

@@ -1,4 +1,5 @@
 #include "damb_loader.hxx"
+#include "damb_atls.hxx"
 
 #include "utility_binary.hxx"
 

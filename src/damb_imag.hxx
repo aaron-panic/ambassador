@@ -1,7 +1,7 @@
 #ifndef DAMB_IMAG_HXX_INCLUDED
 #define DAMB_IMAG_HXX_INCLUDED
 
-#include "format_damb.hxx"
+#include "damb_format.hxx"
 
 #include <type_traits>
 

@@ -45,7 +45,7 @@ set(AMBDATA_HEADERS
     src/damb_atls.hxx
     src/damb_imag.hxx
     src/damb_mapl.hxx
-    src/format_damb.hxx
+    src/damb_format.hxx
     src/runtime_atlas.hxx
     src/runtime_image.hxx
     src/runtime_map.hxx
