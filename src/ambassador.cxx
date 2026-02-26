@@ -1,7 +1,7 @@
 #include "ambassador.hxx"
 #include "config.hxx"
 
-#include <iostream>
+#include <algorithm>
 #include <stdexcept>
 
 Ambassador::Ambassador() {
@@ -10,6 +10,16 @@ Ambassador::Ambassador() {
         amb::config::APP_VERSION,
         amb::config::APP_IDENTIFIER
     );
+
+    m_lasttick = SDL_GetTicks();
+}
+
+Ambassador::~Ambassador() = default;
+
+SDL_AppResult Ambassador::bootstrap() {
+    if (m_bootstrapped) {
+        return checkInit();
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         m_initErrors = true;
@@ -23,7 +33,7 @@ Ambassador::Ambassador() {
         amb::config::APP_TITLE,
         amb::config::DEFAULT_APP_WIDTH,
         amb::config::DEFAULT_APP_HEIGHT,
-        SDL_WINDOW_RESIZABLE,
+        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY,
         &raw_window,
         &raw_renderer
     )) {
@@ -40,19 +50,19 @@ Ambassador::Ambassador() {
         renderer(),
         amb::config::DEFAULT_APP_WIDTH,
         amb::config::DEFAULT_APP_HEIGHT,
-        SDL_LOGICAL_PRESENTATION_LETTERBOX
+        SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
     )) {
         m_initErrors = true;
         SDL_Log("Logical presentation setup failed: %s", SDL_GetError());
     }
 
-    configureGrid(amb::config::DEFAULT_APP_WIDTH, amb::config::DEFAULT_APP_HEIGHT);
-    m_lasttick = SDL_GetTicks();
+    configureViewportGrid(amb::config::DEFAULT_APP_WIDTH, amb::config::DEFAULT_APP_HEIGHT);
+
+    m_bootstrapped = true;
+    return checkInit();
 }
 
-Ambassador::~Ambassador() = default;
-
-SDL_AppResult Ambassador::checkInit() {
+SDL_AppResult Ambassador::checkInit() const {
     return (m_initErrors) ? SDL_APP_FAILURE : SDL_APP_CONTINUE;
 }
 
@@ -60,12 +70,34 @@ bool Ambassador::needUpdate(u64 now) {
     return (last() + amb::config::UPDATE_SPEED <= now);
 }
 
-void Ambassador::configureGrid(int width, int height) {
-    std::cout << "Dimensions: " << width << " X " << height << std::endl;
+void Ambassador::configureViewportGrid(int width, int height) {
     m_viewport_row_sz = width / amb::game::MAP_TILE_SIZE + 1;
     m_viewport_col_sz = height / amb::game::MAP_TILE_SIZE + 1;
+}
 
-    std::cout << "Grid Dimensions: " << m_viewport_row_sz << " X " << m_viewport_col_sz << std::endl;
+SDL_Rect Ambassador::layerViewportFor(const VisualLayer& layer) const {
+    const auto* map_layer = dynamic_cast<const MapLayer*>(&layer);
+    if (map_layer == nullptr) {
+        return SDL_Rect {
+            0,
+            0,
+            amb::config::DEFAULT_APP_WIDTH,
+            amb::config::DEFAULT_APP_HEIGHT,
+        };
+    }
+
+    const int map_px_w = static_cast<int>(map_layer->map().width() * amb::game::MAP_TILE_SIZE);
+    const int map_px_h = static_cast<int>(map_layer->map().height() * amb::game::MAP_TILE_SIZE);
+
+    const int viewport_w = std::min(map_px_w, amb::config::DEFAULT_APP_WIDTH);
+    const int viewport_h = std::min(map_px_h, amb::config::DEFAULT_APP_HEIGHT);
+
+    return SDL_Rect {
+        (amb::config::DEFAULT_APP_WIDTH - viewport_w) / 2,
+        (amb::config::DEFAULT_APP_HEIGHT - viewport_h) / 2,
+        viewport_w,
+        viewport_h,
+    };
 }
 
 SDL_AppResult Ambassador::loadSandbox(const std::filesystem::path& file_path) {

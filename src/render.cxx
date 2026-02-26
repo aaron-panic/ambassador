@@ -4,7 +4,7 @@
 SDL_AppResult Ambassador::render() {
     if (!SDL_SetRenderDrawColor(
         renderer(),
-        (u8)255,
+        (u8)0,
         (u8)0,
         (u8)0,
         SDL_ALPHA_OPAQUE
@@ -13,12 +13,22 @@ SDL_AppResult Ambassador::render() {
         return SDL_APP_FAILURE;
     }
 
-    SDL_RenderClear(renderer());
+    if (!SDL_RenderClear(renderer())) {
+        SDL_Log("Renderer clear failed: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
 
     for (const auto& layer : m_layers) {
+        const SDL_Rect viewport = layerViewportFor(*layer);
+        if (!SDL_SetRenderViewport(renderer(), &viewport)) {
+            SDL_Log("Renderer viewport setup failed: %s", SDL_GetError());
+            return SDL_APP_FAILURE;
+        }
+
         layer->render(renderer());
     }
 
+    SDL_SetRenderViewport(renderer(), nullptr);
     SDL_RenderPresent(renderer());
 
     return SDL_APP_CONTINUE;

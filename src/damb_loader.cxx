@@ -267,6 +267,11 @@ ImageRuntime DambLoader::loadImageRuntime(std::ifstream& stream, const damb::Toc
 
     ImageRuntime image_runtime {};
     image_runtime.texture.reset(raw_texture);
+
+    if (!SDL_SetTextureScaleMode(image_runtime.texture.get(), SDL_SCALEMODE_NEAREST)) {
+        throw std::runtime_error(std::string("Failed to set texture scale mode: ") + SDL_GetError());
+    }
+
     return image_runtime;
 }
 

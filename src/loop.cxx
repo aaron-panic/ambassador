@@ -2,8 +2,15 @@
 #include "ambassador.hxx"
 
 SDL_AppResult Ambassador::loop() {
+    if (!m_running) {
+        return SDL_APP_CONTINUE;
+    }
+
     u64 now = SDL_GetTicks();
-    if (needUpdate(now)) update(now);
+    if (needUpdate(now)) {
+        update(now);
+    }
+
     return render();
 }
 
