@@ -4,6 +4,7 @@
 #include "runtime_image.hxx"
 #include "runtime_atlas.hxx"
 #include "runtime_map.hxx"
+#include "config.hxx"
 
 #include <memory>
 #include <utility>
@@ -42,8 +43,57 @@ public:
       m_spawn_point(std::move(spawn_point)) {}
 
     void render(SDL_Renderer* renderer) override {
-        (void)renderer;
-        // TODO: iterate visible map cells and draw atlas rects from image().texture.
+        if (renderer == nullptr || image().texture == nullptr || amb::game::MAP_TILE_SIZE == 0) {
+            return;
+        }
+
+        SDL_Rect viewport {0, 0, 0, 0};
+        if (!SDL_GetRenderViewport(renderer, &viewport)) {
+            SDL_Log("MapLayer::render failed to query viewport: %s", SDL_GetError());
+            return;
+        }
+
+        i32 min_tx = 0;
+        i32 max_tx = -1;
+        i32 min_ty = 0;
+        i32 max_ty = -1;
+        map().clampVisibleWorldToTileRange(
+            0.0f,
+            0.0f,
+            static_cast<float>(viewport.w),
+            static_cast<float>(viewport.h),
+            min_tx,
+            max_tx,
+            min_ty,
+            max_ty);
+
+        if (max_tx < min_tx || max_ty < min_ty) {
+            return;
+        }
+
+        for (i32 tile_y = min_ty; tile_y <= max_ty; ++tile_y) {
+            for (i32 tile_x = min_tx; tile_x <= max_tx; ++tile_x) {
+                const Cell* cell = map().cellAtTile(static_cast<std::size_t>(tile_x), static_cast<std::size_t>(tile_y));
+                if (cell == nullptr) {
+                    continue;
+                }
+
+                const std::size_t atlas_index = static_cast<std::size_t>(*cell);
+                if (atlas_index >= atlas().rects.size()) {
+                    continue;
+                }
+
+                const SDL_FRect& source_rect = atlas().rects[atlas_index];
+                const SDL_FRect destination_rect {
+                    static_cast<float>(tile_x * amb::game::MAP_TILE_SIZE),
+                    static_cast<float>(tile_y * amb::game::MAP_TILE_SIZE),
+                    static_cast<float>(amb::game::MAP_TILE_SIZE),
+                    static_cast<float>(amb::game::MAP_TILE_SIZE),
+                };
+
+                SDL_RenderTexture(renderer, image().texture.get(), &source_rect, &destination_rect);
+            }
+        }
     }
 
     MapRuntime& map() noexcept { return m_map_runtime; }
