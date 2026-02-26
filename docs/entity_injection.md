@@ -29,6 +29,13 @@ We are implementing the entity system in Ambassador using strict architectural b
 
 ---
 
+## Do-Not-Modify
+
+1. **`docs/*`** — All documentation files are to be updated manually while implementing features.
+2. **`data/*`** — All data files are to remain intact and unmodified unless explicitly requested.
+
+---
+
 ## Reference Documents (Three-File Overview)
 
 These four files define the implementation contract and execution process:
@@ -42,7 +49,7 @@ These four files define the implementation contract and execution process:
 3. **`docs/entity_implementation.md`**  
    The checklist/roadmap: concrete phased implementation tasks executed one item at a time.
 
-3. **`docs/coding_conventions.md`**  
+3. **`docs/coding_standards.md`**  
    An overview of coding styles and conventions used in source files for reference.
 ---
 
@@ -112,7 +119,7 @@ These four files define the implementation contract and execution process:
 ### Runtime Storage / Scene Integration
 
 - **`src/runtime_entity.hxx`** — Scene-owned container wrapper for entity runtime vectors, ID mapping, and stable indexing policy.
-- **`src/entity_registry.hxx`** — Optional ownership/index service to map stable `u16` IDs to runtime/entity handles cleanly.
+- **`src/registry_entity.hxx`** — Optional ownership/index service to map stable `u16` IDs to runtime/entity handles cleanly.
 
 ### Loader / Format Integration
 
@@ -143,7 +150,7 @@ These four files define the implementation contract and execution process:
 For each implementation turn:
 
 1. Identify exact target (`Phase X, Item Y`) from `src/entity_implementation.md`.
-2. Confirm scope boundaries (in/out).
+2. Confirm scope boundaries (in/out) with conversation before any code, commit or PR is generated.
 3. Implement only that item.
 4. Ensure project remains compilable after the change.
 5. Stop and report results before proceeding to the next checklist item.
