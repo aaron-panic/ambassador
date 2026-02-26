@@ -7,7 +7,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     Ambassador *app = new Ambassador();
     *appstate = app;
 
-    if (app->checkInit() != SDL_APP_CONTINUE) {
+    if (app->bootstrap() != SDL_APP_CONTINUE) {
         return SDL_APP_FAILURE;
     }
 

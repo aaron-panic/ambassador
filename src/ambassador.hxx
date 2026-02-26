@@ -18,7 +18,8 @@ public:
     SDL_Window* window() const noexcept { return m_window.get(); }
     SDL_Renderer* renderer() const noexcept { return m_renderer.get(); }
 
-    SDL_AppResult checkInit();
+    SDL_AppResult bootstrap();
+    SDL_AppResult checkInit() const;
 
     u64 last() { return m_lasttick; }
 
@@ -30,12 +31,15 @@ public:
     SDL_AppResult render();
     SDL_AppResult loadSandbox(const std::filesystem::path& file_path);
 
-    void configureGrid(int width, int height);
+    void configureViewportGrid(int width, int height);
+    SDL_Rect layerViewportFor(const VisualLayer& layer) const;
 private:
     WindowPtr m_window;
     RendererPtr m_renderer;
 
+    bool m_bootstrapped = false;
     bool m_initErrors = false;
+    bool m_running = true;
     u64 m_lasttick = 0;
 
     int m_viewport_row_sz;
