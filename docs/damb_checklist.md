@@ -106,19 +106,19 @@
 
 ---
 
-- [ ] **Phase 5 — Application Wiring**
+- [x] **Phase 5 — Application Wiring**
 
-  - [ ] 14. Add layer ownership to Ambassador
+  - [x] 14. Add layer ownership to Ambassador
          - `std::vector<VisualLayerPtr>` in `Ambassador`.
          - Load map layer during init/startup.
          - Store layer instance.
 
-  - [ ] 15. Render pipeline iteration
+  - [x] 15. Render pipeline iteration
          - In `render()`:
            - Iterate layers.
            - Call each layer’s `render()`.
 
-  - [ ] 16. Separate Ambassador bootstrap from runtime orchestration
+  - [x] 16. Separate Ambassador bootstrap from runtime orchestration
          - Move initialization/bootstrap concerns out of `Ambassador` where practical.
          - Isolate viewport/runtime state orchestration for cleaner lifecycle boundaries.
          - Remove temporary debug I/O from core application object.
