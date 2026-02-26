@@ -1,5 +1,10 @@
 #include "dambassador.hxx"
 
+#include "damb_atls.hxx"
+#include "damb_imag.hxx"
+#include "damb_mapl.hxx"
+#include "format_damb.hxx"
+
 #include "utility_binary.hxx"
 #include "utility_parse.hxx"
 #include "utility_string.hxx"

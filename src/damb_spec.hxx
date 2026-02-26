@@ -1,7 +1,9 @@
 #ifndef DAMB_SPEC_HXX_INCLUDED
 #define DAMB_SPEC_HXX_INCLUDED
 
-#include "format_damb.hxx"
+#include "damb_atls.hxx"
+#include "damb_imag.hxx"
+#include "damb_mapl.hxx"
 
 #include <filesystem>
 #include <vector>
