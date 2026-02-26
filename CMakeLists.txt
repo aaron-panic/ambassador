@@ -42,6 +42,9 @@ set(AMBUTILITY_SOURCES
 set(AMBDATA_HEADERS
     src/damb_loader.hxx
     src/damb_spec.hxx
+    src/damb_atls.hxx
+    src/damb_imag.hxx
+    src/damb_mapl.hxx
     src/format_damb.hxx
     src/runtime_atlas.hxx
     src/runtime_image.hxx
@@ -52,6 +55,9 @@ set(AMBDATA_HEADERS
 
 set(AMBDATA_SOURCES
     src/damb_loader.cxx
+    src/damb_loader_atls.cxx
+    src/damb_loader_imag.cxx
+    src/damb_loader_mapl.cxx
 )
 
 add_library(ambcore STATIC)
