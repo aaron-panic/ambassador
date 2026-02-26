@@ -127,7 +127,7 @@
 
 - [ ] **Phase 6 — Rendering Visible Map**
 
-  - [ ] 17. Implement `MapLayer::render()`
+  - [x] 17. Implement `MapLayer::render()`
          - Compute visible tile bounds from:
            - Camera position
            - Viewport dimensions
