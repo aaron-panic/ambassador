@@ -1,15 +1,4 @@
-# Roadmap to Entities (Atomic, Iterative)
-
----
-
-## Context Injection Prompt (Use at the top of future implementation chats)
-
-We are implementing entities in Ambassador with a strict separation of concerns:
-- Entity classes own behavior/control logic.
-- Runtime objects own hot render/simulation state.
-- Visual layers render runtime objects only and do not depend on entity behavior classes.
-- We will build this in small, atomic steps and validate each step before moving on.
-- First goal is minimal player spawn support via ENTS, then rendering, then controls/update tuning.
+# Roadmap to Entities
 
 ---
 

@@ -36,7 +36,7 @@ We are implementing the entity system in Ambassador using strict architectural b
 
 ---
 
-## Reference Documents (Three-File Overview)
+## Reference Documents
 
 These four files define the implementation contract and execution process:
 
