@@ -4,7 +4,7 @@
 
 - [ ] **Phase 1 — Runtime/Interface Foundations**
 
-  - [ ] 1. Define `EntityRuntime` as hot runtime data
+  - [x] 1. Define `EntityRuntime` as hot runtime data
         - Position as floats (`world_x`, `world_y`).
         - Direction as float angle (degrees or radians; pick one and document).
         - Velocity as floats (at minimum scalar speed; optional vx/vy later).
