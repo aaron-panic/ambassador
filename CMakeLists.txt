@@ -60,6 +60,16 @@ set(AMBDATA_SOURCES
     src/damb_loader_mapl.cxx
 )
 
+
+set(AMBGAME_HEADERS
+    src/runtime_entity.hxx
+    src/entity.hxx
+)
+
+set(AMBGAME_SOURCES
+    src/entity.cxx
+)
+
 add_library(ambcore STATIC)
 target_sources(ambcore PRIVATE ${AMBCORE_SOURCES} ${AMBCORE_HEADERS})
 target_include_directories(ambcore PUBLIC src)
@@ -74,13 +84,18 @@ add_library(ambutility STATIC)
 target_sources(ambutility PRIVATE ${AMBUTILITY_SOURCES} ${AMBUTILITY_HEADERS})
 target_include_directories(ambutility PUBLIC src)
 
+add_library(ambgame STATIC)
+target_sources(ambgame PRIVATE ${AMBGAME_SOURCES} ${AMBGAME_HEADERS})
+target_include_directories(ambgame PUBLIC src)
+target_link_libraries(ambgame PUBLIC ambconfig)
+
 add_library(ambdata STATIC)
 target_sources(ambdata PRIVATE ${AMBDATA_SOURCES} ${AMBDATA_HEADERS})
 target_include_directories(ambdata PUBLIC src)
 target_link_libraries(ambdata PUBLIC ambutility ambconfig PkgConfig::SDL3 PkgConfig::SDL3_IMAGE)
 
 add_executable(ambassador src/main.cxx)
-target_link_libraries(ambassador PRIVATE ambcore ambdata ambconfig PkgConfig::SDL3 PkgConfig::SDL3_IMAGE)
+target_link_libraries(ambassador PRIVATE ambcore ambgame ambdata ambconfig PkgConfig::SDL3 PkgConfig::SDL3_IMAGE)
 set_target_properties(ambassador PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test")
 
 add_executable(dambassador
