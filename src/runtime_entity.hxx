@@ -14,6 +14,7 @@ namespace amb::entity {
         float world_x = 0.0f;
         float world_y = 0.0f;
         float heading_degrees = 0.0f;
+        float roll_degrees = 0.0f;
         float speed = 0.0f;
     };
 }
