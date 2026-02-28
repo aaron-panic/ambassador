@@ -16,6 +16,15 @@ Ambassador::Ambassador() {
 
 Ambassador::~Ambassador() = default;
 
+void Ambassador::clearEntityScene() {
+    m_entities.clear();
+    m_entity_runtime.clear();
+}
+
+void Ambassador::clearLayerScene() {
+    m_layers.clear();
+}
+
 SDL_AppResult Ambassador::bootstrap() {
     if (m_bootstrapped) {
         return checkInit();
@@ -107,7 +116,8 @@ SDL_AppResult Ambassador::loadSandbox(const std::filesystem::path& file_path) {
     }
 
     try {
-        m_layers.clear();
+        clearEntityScene();
+        clearLayerScene();
         m_layers.emplace_back(m_loader.loadMapLayer(renderer(), file_path));
     } catch (const std::exception& ex) {
         SDL_Log("Failed to load DAMB file %s: %s", file_path.string().c_str(), ex.what());

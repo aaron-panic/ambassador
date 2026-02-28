@@ -3,6 +3,7 @@
 
 #include "amb_types.hxx"
 #include "damb_loader.hxx"
+#include "entity.hxx"
 
 #include <SDL3/SDL.h>
 
@@ -33,6 +34,9 @@ public:
 
     void configureViewportGrid(int width, int height);
     SDL_Rect layerViewportFor(const VisualLayer& layer) const;
+
+    void clearEntityScene();
+    void clearLayerScene();
 private:
     WindowPtr m_window;
     RendererPtr m_renderer;
@@ -47,6 +51,9 @@ private:
 
     DambLoader m_loader;
     std::vector<VisualLayerPtr> m_layers;
+
+    std::vector<amb::entity::EntityRuntime> m_entity_runtime;
+    std::vector<amb::entity::EntityPtr> m_entities;
 };
 
 

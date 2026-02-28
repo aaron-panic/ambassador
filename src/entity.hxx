@@ -5,6 +5,7 @@
 #include "runtime_entity.hxx"
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -141,6 +142,15 @@ namespace amb::entity {
 
         int m_roll_steps = 0;
     };
+
+
+    struct EntityDeleter {
+        void operator()(Entity* entity) const noexcept {
+            delete entity;
+        }
+    };
+
+    using EntityPtr = std::unique_ptr<Entity, EntityDeleter>;
 
     class PlayerEntity final : public Entity {
     public:

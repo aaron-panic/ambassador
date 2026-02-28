@@ -15,5 +15,12 @@ SDL_AppResult Ambassador::loop() {
 }
 
 void Ambassador::update(u64 now) {
+    const u64 dt_ms = now - m_lasttick;
     m_lasttick = now;
+
+    for (const auto& entity : m_entities) {
+        if (entity != nullptr) {
+            entity->integrate(dt_ms);
+        }
+    }
 }
