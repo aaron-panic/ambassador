@@ -22,11 +22,12 @@
 - Entity wrappers hold references/pointers to owned runtime objects.
 - Visual systems consume runtime views/references only.
 - Runtime objects must outlive all wrappers/references that point to them.
+- Scene teardown/destruction order must clear behavior wrappers before clearing runtime storage.
 
 ## 1.3 Data Layout & Identity
 
 - Runtime storage strategy (v1): **Array of Structs** (`std::vector<...>`) for fast contiguous iteration.
-- Entity identity (scene-local): **stable `u16` numeric ID**.
+- Entity identity (scene-local): **stable `u16` numeric ID** stored in entity behavior/wrapper objects (not in the hot runtime struct).
 - Hot path policy: keep only the least amount of data needed in runtime objects.
 - Extra/slow-changing control flags/settings stay in entity abstraction layers, not runtime hot structs.
 
@@ -112,6 +113,7 @@ This subsystem is a **top-down 2D flight control simulation** with high skill ex
 | ENT-006 | 2026-02-26 | accepted | Catch-up policy: hard cap + drop excess accumulated time. | Prevents death spirals and long-lag recovery tails. | Rare heavy frames may lose sim time. | If sim-time loss impacts gameplay feel. |
 | ENT-007 | 2026-02-26 | accepted | Input model: event-driven command queue with anti-mash semantics. | Reward precision over button spam. | Requires command coalescing/conflict rules. | If controls feel sticky/unresponsive. |
 | ENT-008 | 2026-02-26 | accepted | Visibility: rebuild index views each update, iterate by `visible_count`. | No per-frame allocations, simple hot loops. | Requires preallocated buffers and count discipline. | If full scans become too expensive. |
+| ENT-009 | 2026-02-28 | accepted | Keep entity IDs in behavior wrappers and keep `EntityRuntime` free of identity fields. | Preserve runtime hot-path compactness while retaining stable control-layer identity. | Systems that need identity must consume entity wrappers or side mappings. | If runtime-side ID lookups become a measured bottleneck. |
 
 ---
 

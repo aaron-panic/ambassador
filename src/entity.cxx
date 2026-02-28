@@ -77,9 +77,14 @@ namespace {
 }
 
 namespace amb::entity {
-    Entity::Entity(EntityRuntime& runtime)
-    : m_runtime(&runtime) {
+    Entity::Entity(EntityRuntime& runtime, const u16 entity_id)
+    : m_runtime(&runtime),
+      m_entity_id(entity_id) {
         syncRuntimeRollDegrees();
+    }
+
+    u16 Entity::id() const noexcept {
+        return m_entity_id;
     }
 
     EntityRuntime& Entity::runtime() noexcept {
@@ -303,8 +308,8 @@ namespace amb::entity {
         m_current_yaw_velocity = std::clamp(m_current_yaw_velocity, -max_yaw_velocity, max_yaw_velocity);
     }
 
-    PlayerEntity::PlayerEntity(EntityRuntime& runtime)
-    : Entity(runtime) {}
+    PlayerEntity::PlayerEntity(EntityRuntime& runtime, const u16 entity_id)
+    : Entity(runtime, entity_id) {}
 
     std::size_t PlayerEntity::addControlPreset(const ControlPreset& preset) {
         m_control_presets.push_back(preset);

@@ -2,7 +2,7 @@
 
 ---
 
-- [ ] **Phase 1 — Runtime/Interface Foundations**
+- [x] **Phase 1 — Runtime/Interface Foundations**
 
   - [x] 1. Define `EntityRuntime` as hot runtime data
         - Position as floats (`world_x`, `world_y`).
@@ -27,10 +27,12 @@
         - No extra fields initially.
         - Just concrete type + hooks for future control complexity.
 
-  - [ ] 5. Define ownership/lifetime policy
+  - [x] 5. Define ownership/lifetime policy
         - Runtime objects allocated by scene/entity system (not visual layer).
         - Entity wrappers reference runtime objects and never outlive them.
         - Document destruction order and pointer validity expectations.
+        - Keep stable scene-local `u16` identity in entity behavior/wrapper objects (not in `EntityRuntime`).
+        - Keep runtime-to-sprite linkage index-driven from scene-owned vectors.
 
 ---
 
@@ -66,7 +68,7 @@
 - [ ] **Phase 3 — Loader to Runtime Translation**
 
   - [ ] 10. Parse ENTS records and construct runtime objects
-         - Pre-allocate runtime container for all entities in scene.
+         - Pre-allocate runtime container for all entities in scene (count entities from ENTS first, then reserve).
          - Create corresponding `EntityRuntime` entries.
          - Apply spawn conversion tile -> world position.
 

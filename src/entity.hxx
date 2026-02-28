@@ -69,8 +69,10 @@ namespace amb::entity {
 
     class Entity : public EntityBehavior {
     public:
-        explicit Entity(EntityRuntime& runtime);
+        explicit Entity(EntityRuntime& runtime, u16 entity_id);
         ~Entity() override = default;
+
+        u16 id() const noexcept;
 
         EntityRuntime& runtime() noexcept override;
         const EntityRuntime& runtime() const noexcept override;
@@ -119,6 +121,7 @@ namespace amb::entity {
         void syncRuntimeRollDegrees();
 
         EntityRuntime* m_runtime = nullptr;
+        u16 m_entity_id = 0;
 
         float m_forward_throttle_target = 0.0f;
         float m_current_forward_velocity = 0.0f;
@@ -154,7 +157,7 @@ namespace amb::entity {
 
     class PlayerEntity final : public Entity {
     public:
-        explicit PlayerEntity(EntityRuntime& runtime);
+        explicit PlayerEntity(EntityRuntime& runtime, u16 entity_id);
         ~PlayerEntity() override = default;
 
         std::size_t addControlPreset(const ControlPreset& preset);
