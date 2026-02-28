@@ -10,12 +10,12 @@
         - Velocity as floats (at minimum scalar speed; optional vx/vy later).
         - Derive from `RuntimeObject` for consistent runtime polymorphism identity.
 
-  - [ ] 2. Define entity behavior interface contract
+  - [x] 2. Define entity behavior interface contract
         - Require behavior-side methods (e.g. `turn`, `setThrottle`, `integrate`).
         - Require access to runtime object (`runtime()` accessor).
         - Keep interface focused on control/simulation operations, not rendering calls.
 
-  - [ ] 3. Implement base `Entity` class
+  - [x] 3. Implement base `Entity` class
         - Own pointer/reference to `EntityRuntime`.
         - Implement shared movement helpers:
           - apply turn input
@@ -23,7 +23,7 @@
           - update position from direction + velocity + dt
         - Keep fast-changing data in runtime object; keep configuration/flags in entity class.
 
-  - [ ] 4. Implement `PlayerEntity` derived class
+  - [x] 4. Implement `PlayerEntity` derived class
         - No extra fields initially.
         - Just concrete type + hooks for future control complexity.
 
