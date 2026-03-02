@@ -32,6 +32,7 @@ namespace amb {
         ChunkBlob buildImageChunk(const damb::ManifestSpec& manifest, const std::filesystem::path& base_dir) const;
         ChunkBlob buildAtlasChunk(const damb::ManifestSpec& manifest) const;
         ChunkBlob buildMapChunk(const damb::ManifestSpec& manifest) const;
+        ChunkBlob buildEntityChunk(const damb::ManifestSpec& manifest) const;
 
         void writeDamb(const damb::ManifestSpec& manifest, const std::filesystem::path& manifest_path) const;
     };

@@ -20,14 +20,20 @@ namespace amb::damb {
     constexpr const char* CL_ENTITY = "ENTS";
 
     struct Header {
-        char magic[8] = {};
         u64 file_size = 0;
         u64 toc_offset = 0;
+
         u32 toc_count = 0;
         u32 toc_entry_size = TOC_ENTRY_SIZE;
         u32 flags = 0;
+        u32 imag_count = 0;
+        u32 atls_count = 0;
+        u32 mapl_count = 0;
+        u32 ents_count = 0;
+
         u16 version = VERSION;
-        u8 reserved[26] = {};
+        char magic[8] = {};
+        u8 reserved[10] = {};
     };
     static_assert(sizeof(Header) == HEADER_SIZE, "Header size does not match stated value.");
     static_assert(std::is_trivially_copyable_v<Header>, "Header must be POD/trivially copyable.");

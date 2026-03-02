@@ -15,6 +15,13 @@ public:
     VisualLayerPtr loadMapLayer(SDL_Renderer* renderer, const std::filesystem::path& file_path) const;
 
 private:
+    struct HeaderChunkCounts {
+        u32 imag_count = 0;
+        u32 atls_count = 0;
+        u32 mapl_count = 0;
+        u32 ents_count = 0;
+    };
+
     struct AtlasChunkMetadata {
         u32 asset_count = 0;
         u16 image_id = 0;
@@ -25,19 +32,21 @@ private:
         AtlasChunkMetadata metadata {};
     };
 
-    void validateFileHeader(const amb::damb::Header& header) const;
+    void validateFileHeader(const amb::damb::Header& header, const HeaderChunkCounts& chunk_counts) const;
 
-    amb::damb::TocEntry findMapLayerEntry(std::ifstream& stream, const amb::damb::Header& header) const;
+    amb::damb::TocEntry findMapLayerEntry(std::ifstream& stream, const amb::damb::Header& header, const HeaderChunkCounts& chunk_counts) const;
     amb::damb::TocEntry findAtlasEntryByIdBeforeMapLayer(
         std::ifstream& stream,
         const amb::damb::Header& header,
         u16 atlas_id,
-        u64 mapl_offset) const;
+        u64 mapl_offset,
+        const HeaderChunkCounts& chunk_counts) const;
     amb::damb::TocEntry findImageEntryByIdBeforeMapLayer(
         std::ifstream& stream,
         const amb::damb::Header& header,
         u16 image_id,
-        u64 mapl_offset) const;
+        u64 mapl_offset,
+        const HeaderChunkCounts& chunk_counts) const;
 
     amb::damb::MapLayerChunkHeader loadMapLayerHeader(std::ifstream& stream, const amb::damb::TocEntry& map_entry) const;
     AtlasChunkRuntimeData loadAtlasRuntime(std::ifstream& stream, const amb::damb::TocEntry& atlas_entry) const;
