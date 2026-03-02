@@ -38,7 +38,7 @@
 
 - [ ] **Phase 2 — ENTS Format (Minimal Spawn First)**
 
-  - [ ] 6. Add minimal ENTS chunk spec for initial spawn use-case
+  - [x] 6. Add minimal ENTS chunk spec for initial spawn use-case
         - ENTS record includes:
           - entity type (player for now)
           - map reference (`map_id`) for validation
