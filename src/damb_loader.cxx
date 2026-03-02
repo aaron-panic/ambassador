@@ -11,7 +11,7 @@ namespace {
     namespace damb = amb::damb;
 }
 
-void DambLoader::validateFileHeader(const damb::Header& header) const {
+void DambLoader::validateFileHeader(const damb::Header& header, const HeaderChunkCounts& chunk_counts) const {
     if (std::memcmp(header.magic, damb::MAGIC, amb::data::MAGIC_LENGTH) != 0) {
         throw std::runtime_error("Invalid DAMB magic value.");
     }
@@ -22,6 +22,18 @@ void DambLoader::validateFileHeader(const damb::Header& header) const {
 
     if (header.toc_entry_size != damb::TOC_ENTRY_SIZE) {
         throw std::runtime_error("Unexpected TOC entry size.");
+    }
+
+    if (chunk_counts.mapl_count == 0) {
+        throw std::runtime_error("DAMB header indicates zero MAPL chunks.");
+    }
+
+    if (chunk_counts.atls_count == 0) {
+        throw std::runtime_error("DAMB header indicates zero ATLS chunks.");
+    }
+
+    if (chunk_counts.ents_count > 0 && (chunk_counts.mapl_count == 0 || chunk_counts.atls_count == 0)) {
+        throw std::runtime_error("ENTS chunks require MAPL and ATLS chunk presence.");
     }
 }
 
@@ -47,7 +59,8 @@ u64 DambLoader::checkedMapPayloadSize(const std::size_t cell_count) const {
     return payload_size;
 }
 
-damb::TocEntry DambLoader::findMapLayerEntry(std::ifstream& stream, const damb::Header& header) const {
+damb::TocEntry DambLoader::findMapLayerEntry(std::ifstream& stream, const damb::Header& header, const HeaderChunkCounts& chunk_counts) const {
+    (void) chunk_counts;
     stream.seekg(static_cast<std::streamoff>(header.toc_offset), std::ios::beg);
     if (!stream) {
         throw std::runtime_error("Failed to seek to TOC.");
@@ -67,8 +80,10 @@ damb::TocEntry DambLoader::findAtlasEntryByIdBeforeMapLayer(
     std::ifstream& stream,
     const damb::Header& header,
     const u16 atlas_id,
-    const u64 mapl_offset) const
+    const u64 mapl_offset,
+    const HeaderChunkCounts& chunk_counts) const
 {
+    (void) chunk_counts;
     stream.seekg(static_cast<std::streamoff>(header.toc_offset), std::ios::beg);
     if (!stream) {
         throw std::runtime_error("Failed to seek to TOC.");
@@ -96,8 +111,10 @@ damb::TocEntry DambLoader::findImageEntryByIdBeforeMapLayer(
     std::ifstream& stream,
     const damb::Header& header,
     const u16 image_id,
-    const u64 mapl_offset) const
+    const u64 mapl_offset,
+    const HeaderChunkCounts& chunk_counts) const
 {
+    (void) chunk_counts;
     stream.seekg(static_cast<std::streamoff>(header.toc_offset), std::ios::beg);
     if (!stream) {
         throw std::runtime_error("Failed to seek to TOC.");
@@ -128,19 +145,32 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
     }
 
     const damb::Header header = amb::utility::readPod<damb::Header>(stream, "file header");
-    validateFileHeader(header);
+    const HeaderChunkCounts chunk_counts {
+        header.imag_count,
+        header.atls_count,
+        header.mapl_count,
+        header.ents_count,
+    };
 
-    const damb::TocEntry map_entry = findMapLayerEntry(stream, header);
+    validateFileHeader(header, chunk_counts);
+
+    const damb::TocEntry map_entry = findMapLayerEntry(stream, header, chunk_counts);
     const damb::MapLayerChunkHeader map_header = loadMapLayerHeader(stream, map_entry);
 
-    const damb::TocEntry atlas_entry = findAtlasEntryByIdBeforeMapLayer(stream, header, map_header.atlas_id, map_entry.offset);
+    const damb::TocEntry atlas_entry = findAtlasEntryByIdBeforeMapLayer(
+        stream,
+        header,
+        map_header.atlas_id,
+        map_entry.offset,
+        chunk_counts);
     const AtlasChunkRuntimeData atlas_runtime_data = loadAtlasRuntime(stream, atlas_entry);
 
     const damb::TocEntry image_entry = findImageEntryByIdBeforeMapLayer(
         stream,
         header,
         atlas_runtime_data.metadata.image_id,
-        map_entry.offset);
+        map_entry.offset,
+        chunk_counts);
     ImageRuntime image_runtime = loadImageRuntime(stream, image_entry, renderer);
 
     MapRuntime map_runtime = loadMapRuntime(stream, map_entry, map_header, atlas_runtime_data.metadata);

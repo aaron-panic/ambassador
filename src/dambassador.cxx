@@ -1,6 +1,7 @@
 #include "dambassador.hxx"
 
 #include "damb_atls.hxx"
+#include "damb_ents.hxx"
 #include "damb_imag.hxx"
 #include "damb_mapl.hxx"
 #include "damb_format.hxx"
@@ -12,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -22,6 +24,7 @@ namespace amb {
             atlas,
             map,
             rows,
+            entity,
         };
 
         void parseAtlasTileRecord(
@@ -69,14 +72,30 @@ namespace amb {
             if (state != ManifestParseState::top) {
                 throw std::runtime_error("Manifest ended before closing all blocks.");
             }
-            if (!manifest.has_output || !manifest.has_image || !manifest.has_atlas || !manifest.has_map) {
-                throw std::runtime_error("Manifest must define output, image, atlas, and map blocks.");
+            if (!manifest.has_output || !manifest.has_image || !manifest.has_atlas || !manifest.has_map || !manifest.has_entity) {
+                throw std::runtime_error("Manifest must define output, image, atlas, map, and entity blocks.");
             }
             if (manifest.atlas.image_id != manifest.image.id) {
                 throw std::runtime_error("Atlas image dependency does not match declared image id.");
             }
             if (manifest.map.atlas_id != manifest.atlas.id) {
                 throw std::runtime_error("Map atlas dependency does not match declared atlas id.");
+            }
+
+            if (manifest.entity.map_id != manifest.map.id) {
+                throw std::runtime_error("Entity block map dependency does not match declared map id.");
+            }
+            if (manifest.entity.records.empty()) {
+                throw std::runtime_error("Entity block must define at least one spawn record.");
+            }
+            for (const damb::EntitySpec& record : manifest.entity.records) {
+                if (record.map_id != manifest.map.id) {
+                    throw std::runtime_error("Entity spawn map_id must match declared map id.");
+                }
+
+                if (record.atlas_id != manifest.atlas.id) {
+                    throw std::runtime_error("Entity spawn atlas_id must match declared atlas id.");
+                }
             }
             if (manifest.map.width == 0 || manifest.map.height == 0) {
                 throw std::runtime_error("Map width and height must be greater than zero.");
@@ -192,6 +211,9 @@ namespace amb {
                 if (keyword == "map") { parseMapStart(tokens); return; }
                 if (keyword == "rows") { parseRowsStart(tokens); return; }
                 if (keyword == "endmap") { parseMapEnd(tokens); return; }
+                if (keyword == "entity") { parseEntityStart(tokens); return; }
+                if (keyword == "spawn") { parseEntitySpawn(tokens); return; }
+                if (keyword == "endentity") { parseEntityEnd(tokens); return; }
 
                 throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unknown statement: " + keyword);
             }
@@ -304,6 +326,82 @@ namespace amb {
             void parseMapEnd(const std::vector<std::string>& tokens) {
                 if (m_state != ManifestParseState::map || tokens.size() != 1) {
                     throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unexpected endmap.");
+                }
+
+                m_state = ManifestParseState::top;
+            }
+
+
+            void parseEntityStart(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::top || tokens.size() != 3) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": entity line must be `entity <id> map=<map_id>`." );
+                }
+
+                m_manifest.entity = damb::EntityBlockSpec {};
+                m_manifest.entity.id = utility::parseUnsigned16(tokens[1], m_line_number, "entity id");
+
+                const auto [key, value] = utility::parseKeyValue(tokens[2], m_line_number);
+                if (key != "map") {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": entity line must include map=<map_id>.");
+                }
+
+                m_manifest.entity.map_id = utility::parseUnsigned16(value, m_line_number, "entity map_id");
+                m_manifest.entity.records.clear();
+                m_manifest.has_entity = true;
+                m_state = ManifestParseState::entity;
+            }
+
+            void parseEntitySpawn(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::entity || tokens.size() != 5) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": spawn line must be `spawn type=player atlas=<atlas_id> map=<map_id> tile=<x,y>`." );
+                }
+
+                damb::EntitySpec record {};
+                bool has_type = false;
+                bool has_atlas = false;
+                bool has_map = false;
+                bool has_tile = false;
+
+                for (std::size_t i = 1; i < tokens.size(); i++) {
+                    const auto [key, value] = utility::parseKeyValue(tokens[i], m_line_number);
+
+                    if (key == "type") {
+                        if (value != "player") {
+                            throw std::runtime_error("Line " + std::to_string(m_line_number) + ": only spawn type=player is supported.");
+                        }
+
+                        record.entity_type = damb::EntityType::player;
+                        has_type = true;
+                    } else if (key == "atlas") {
+                        record.atlas_id = utility::parseUnsigned16(value, m_line_number, "spawn atlas_id");
+                        has_atlas = true;
+                    } else if (key == "map") {
+                        record.map_id = utility::parseUnsigned16(value, m_line_number, "spawn map_id");
+                        has_map = true;
+                    } else if (key == "tile") {
+                        const std::vector<std::string> values = utility::split(value, ',');
+                        if (values.size() != 2) {
+                            throw std::runtime_error("Line " + std::to_string(m_line_number) + ": tile requires x,y.");
+                        }
+
+                        record.tile_x = utility::parseUnsigned16(utility::trim(values[0]), m_line_number, "spawn tile_x");
+                        record.tile_y = utility::parseUnsigned16(utility::trim(values[1]), m_line_number, "spawn tile_y");
+                        has_tile = true;
+                    } else {
+                        throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unknown spawn field: " + key);
+                    }
+                }
+
+                if (!has_type || !has_atlas || !has_map || !has_tile) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": spawn requires type=, atlas=, map=, and tile= fields.");
+                }
+
+                m_manifest.entity.records.push_back(record);
+            }
+
+            void parseEntityEnd(const std::vector<std::string>& tokens) {
+                if (m_state != ManifestParseState::entity || tokens.size() != 1) {
+                    throw std::runtime_error("Line " + std::to_string(m_line_number) + ": unexpected endentity.");
                 }
 
                 m_state = ManifestParseState::top;
@@ -447,12 +545,47 @@ namespace amb {
         return chunk;
     }
 
+
+    Dambassador::ChunkBlob Dambassador::buildEntityChunk(const damb::ManifestSpec& manifest) const {
+        ChunkBlob chunk;
+
+        damb::EntityChunkHeader header {};
+        std::memcpy(header.header.type, damb::CL_ENTITY, amb::data::CHUNK_TYPE_LENGTH);
+        header.header.id = manifest.entity.id;
+        header.map_id = manifest.entity.map_id;
+
+        if (manifest.entity.records.size() > static_cast<std::size_t>(std::numeric_limits<u16>::max())) {
+            throw std::runtime_error("Entity record count exceeds ENTS format limit.");
+        }
+
+        header.entity_count = static_cast<u16>(manifest.entity.records.size());
+        utility::appendPod(chunk.bytes, header);
+
+        for (const damb::EntitySpec& record : manifest.entity.records) {
+            damb::EntityRecord entity_record {};
+            entity_record.entity_type = record.entity_type;
+            entity_record.atlas_id = record.atlas_id;
+            entity_record.map_id = record.map_id;
+            entity_record.tile_x = record.tile_x;
+            entity_record.tile_y = record.tile_y;
+            entity_record.flags = record.flags;
+            utility::appendPod(chunk.bytes, entity_record);
+        }
+
+        std::memcpy(chunk.toc.type, damb::CL_ENTITY, amb::data::CHUNK_TYPE_LENGTH);
+        chunk.toc.id = manifest.entity.id;
+        chunk.toc.size = chunk.bytes.size();
+        chunk.toc.uncompressed_size = chunk.toc.size;
+        return chunk;
+    }
+
     void Dambassador::writeDamb(const damb::ManifestSpec& manifest, const std::filesystem::path& manifest_path) const {
         const std::filesystem::path base_dir = manifest_path.parent_path();
         std::vector<ChunkBlob> chunks;
         chunks.push_back(buildImageChunk(manifest, base_dir));
         chunks.push_back(buildAtlasChunk(manifest));
         chunks.push_back(buildMapChunk(manifest));
+        chunks.push_back(buildEntityChunk(manifest));
 
         u64 cursor = damb::HEADER_SIZE;
         for (ChunkBlob& chunk : chunks) {
@@ -473,6 +606,27 @@ namespace amb {
         header.toc_entry_size = damb::TOC_ENTRY_SIZE;
         header.flags = 0;
         header.version = damb::VERSION;
+
+        for (const ChunkBlob& chunk : chunks) {
+            if (std::memcmp(chunk.toc.type, damb::CL_IMAGE, amb::data::CHUNK_TYPE_LENGTH) == 0) {
+                header.imag_count++;
+                continue;
+            }
+
+            if (std::memcmp(chunk.toc.type, damb::CL_ATLAS, amb::data::CHUNK_TYPE_LENGTH) == 0) {
+                header.atls_count++;
+                continue;
+            }
+
+            if (std::memcmp(chunk.toc.type, damb::CL_MAP_LAYER, amb::data::CHUNK_TYPE_LENGTH) == 0) {
+                header.mapl_count++;
+                continue;
+            }
+
+            if (std::memcmp(chunk.toc.type, damb::CL_ENTITY, amb::data::CHUNK_TYPE_LENGTH) == 0) {
+                header.ents_count++;
+            }
+        }
 
         const std::filesystem::path output_path = base_dir / manifest.output_path;
         std::ofstream out(output_path, std::ios::binary | std::ios::trunc);
