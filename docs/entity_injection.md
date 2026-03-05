@@ -60,7 +60,7 @@ These four files define the implementation contract and execution process:
 - **Stage 3:** Build sprite-layer integration using runtime-only render inputs.
 - **Stage 4:** Add deterministic input command flow and fixed-step update handling.
 - **Stage 5:** Tune visibility iteration and control responsiveness.
-- **Stage 6:** Extend toward richer entity state (animation/facing buckets/scanner behavior) incrementally.
+- **Stage 6:** Extend toward richer entity state (animation/roll sprites/scanner behavior) incrementally.
 
 ---
 
@@ -110,7 +110,7 @@ These four files define the implementation contract and execution process:
 
 ### Core Entity Domain
 
-- **`src/entity_types.hxx`** — Entity-domain enums/constants (IDs, direction bucket constants, visibility states) scoped under `amb::entity`.
+- **`src/entity_types.hxx`** — Entity-domain enums/constants (IDs, roll increment constants, visibility states) scoped under `amb::entity`.
 - **`src/entity_runtime.hxx`** — Hot-path `EntityRuntime` structure(s) with minimal update/render state (AoS-friendly layout).
 - **`src/entity.hxx`** — Base entity abstraction interface/class for control semantics acting on runtime references.
 - **`src/entity_player.hxx`** — Player entity declaration deriving from base entity abstraction.
@@ -129,7 +129,7 @@ These four files define the implementation contract and execution process:
 ### Visual Integration
 
 - **`src/visual_sprite_layer.hxx`** — Sprite-layer declaration that consumes runtime entity views and renders without gameplay logic.
-- **`src/visual_sprite_layer.cxx`** — Sprite-layer implementation with visibility-index iteration and facing-bucket sprite selection.
+- **`src/visual_sprite_layer.cxx`** — Sprite-layer implementation with visibility-index iteration and roll-driven sprite selection.
 
 ### Input / Update Pipeline
 

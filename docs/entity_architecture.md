@@ -86,16 +86,16 @@ This subsystem is a **top-down 2D flight control simulation** with high skill ex
 
 ## 2.4 Motion Representation (v1)
 
-- Keep both:
-  - **Continuous heading float** for actual movement path.
-  - **Discrete facing bucket** for sprite selection.
-- Discrete facing is recalculated from heading on direction-change update/input steps.
+- **Yaw** (heading): continuous `float` angle in degrees. Determines the ship's facing direction in the top-down plane. The sprite is rotated programmatically (e.g., via SDL render rotation) — yaw does **not** use discrete sprite frames.
+- **Roll** (banking): discrete angle in **15-degree increments** (-75, -60, -45, -30, -15, 0, +15, +30, +45, +60, +75). Each roll value maps to a distinct sprite asset. Roll is visual only — it does not alter the ship's world-space movement axis.
+- Sprite selection pipeline: roll value selects the sprite frame; yaw rotation is applied on top during rendering.
 
 ## 2.5 Flight Semantics Note
 
-- Primary movement model: scalar speed + heading.
-- Rotation and movement are intentionally decoupled (space-flight feel).
-- Roll visuals and reverse-roll behavior are handled via control logic/state transitions (not by introducing extra world axes).
+- Primary movement model: scalar speed + heading (yaw).
+- Yaw and movement are intentionally decoupled (space-flight feel).
+- Roll is a visual/control-feel mechanic: the ship banks when turning, with sprite selection driven by discrete roll state. Roll does not introduce additional world-space axes.
+- Reverse-roll and roll recovery behavior are handled via control logic/state transitions in the entity abstraction layer.
 
 ---
 
