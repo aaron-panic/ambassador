@@ -1,117 +1,179 @@
-# CLAUDE.md
+# Ambassador — CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file establishes working context, constraints, and conventions for Claude when working on the Ambassador codebase.
+
+---
+
+## Project Overview
+
+Ambassador is a **top-down 2D flight control game** written in C++17, built on SDL3/SDL3-image. It is not a tile-RPG — the core gameplay intent is tight, skill-based flight with high-precision controls.
+
+The project also ships a standalone binary packaging tool called **dambassador** for authoring `.damb` asset bundles.
+
+---
 
 ## Build System
 
-This is a C++17 project using CMake with SDL3 and SDL3_image (via pkg-config). The build directory is pre-configured at `build/`.
-
-```sh
-# Configure (first time or after CMakeLists.txt changes)
-cmake -B build
-
-# Build everything
-cmake --build build
-
-# Build a specific target
-cmake --build build --target ambassador
-cmake --build build --target dambassador
-
-# Run the game (requires a .damb file)
-./build/test/ambassador build/sandbox.damb
-
-# Run the DAMB tool
-./build/test/dambassador
+```bash
+mkdir build && cd build
+cmake ..
+make
 ```
 
-There are no automated tests. Smoke-test by running the executables against `build/sandbox.damb`.
+- Requires: `cmake 3.14+`, `pkg-config`, `SDL3`, `SDL3-image`
+- Outputs to `build/test/`:
+  - `ambassador <sandbox.damb>` — game executable
+  - `dambassador` — asset packaging tool
+- Standard: **C++17**
 
-## Two Executables
+There is no automated test suite. Validation is done by running the executable with a test data file (`data/sandbox.mamb`).
 
-- **`ambassador`** — the game runtime (`src/main.cxx` entrypoint, SDL3 callback model)
-- **`dambassador`** — the DAMB asset packer/inspector CLI tool (`src/dambassador_main.cxx` entrypoint)
+---
 
-## DAMB Binary Format
+## Source File Map
 
-DAMB (`.damb`) is the project's custom binary asset container format. Key concepts:
+> See `docs/entity_injection.md` for a full per-file rationale. Short reference:
+| File | Purpose |
+|---|---|
+| `src/ambassador.hxx/.cxx` | Core app class: bootstrap, loop, load, layer ownership |
+| `src/main.cxx` | SDL3 callback entry point (`SDL_AppInit` etc.) |
+| `src/config.hxx/.cxx` | Centralized constants — single source of truth for tuning |
+| `src/amb_types.hxx` | Primitive type aliases (`u8`, `u16`, etc.) and SDL smart pointer deleters |
+| `src/damb_format.hxx` | DAMB binary format spec (magic, TOC, chunk headers, alignment) |
+| `src/damb_imag/atls/mapl.hxx` | Per-chunk schema types (isolated for format modularity) |
+| `src/damb_loader.hxx/.cxx` | Loader orchestration — validates + dispatches chunk loading |
+| `src/damb_loader_imag/atls/mapl.cxx` | Per-chunk loader implementations |
+| `src/damb_spec.hxx` | Tooling manifest/spec structures |
+| `src/dambassador.hxx/.cxx` | DAMB tool: create/extract/inspect entry points |
+| `src/dambassador_main.cxx` | CLI entry point for dambassador (isolated from game) |
+| `src/runtime_object.hxx` | Base `RuntimeObject` polymorphic interface |
+| `src/runtime_image/atlas/map.hxx` | Runtime data containers for loaded assets |
+| `src/runtime_entity.hxx` | Entity runtime + abstraction (being refactored; see entity docs) |
+| `src/visual_layers.hxx` | Visual layer interfaces and `MapLayer`/`SpriteLayer` implementations |
+| `src/event.cxx` | Event phase — input/event routing |
+| `src/loop.cxx` | Fixed-step loop pacing and update trigger |
+| `src/render.cxx` | Render phase — layer traversal |
+| `src/utility_binary.hxx` | Binary read/write helpers |
+| `src/utility_parse.hxx/.cxx` | Parser helpers for manifest/token workflows |
+| `src/utility_string.hxx/.cxx` | String trim/split/token helpers |
 
-- **File layout**: Fixed 64-byte `Header` → TOC (array of 48-byte `TocEntry`) → chunk data
-- **Chunk types**: `IMAG` (image bytes), `ATLS` (atlas tile rects), `MAPL` (map layer cells), `ENTS` (entity spawns)
-- **Alignment**: All chunks are 8-byte aligned (`Align8`/`PadTo8` helpers in `damb_format.hxx`)
-- **IDs**: Chunks carry `u16` IDs; ATLS references IMAG by `image_id`, MAPL references ATLS by `atlas_id`
-- **Format constants** live exclusively in `src/damb_format.hxx`; binary POD structs use `static_assert(sizeof(...))` and `is_trivially_copyable` guards
+---
 
-The `.mamb` manifest file (text format) is consumed by `dambassador create` to pack a `.damb`.
+## Architecture: Three Hard Separations
 
-## Code Architecture
+These three concerns **must never be mixed**:
 
-### Static Libraries
+1. **Control/behavior** — entity abstraction classes; own logic, flags, control rules.
+2. **State mutation/update** — runtime objects + update systems; hot-path data only.
+3. **Rendering** — visual layers; render from runtime data only, no gameplay logic.
 
-| Library | Sources | Purpose |
+Visual layers are **visual-only**. No control logic belongs in any rendering code path.
+
+---
+
+## Entity System (Active Work)
+
+The entity system is under active implementation. Reference these docs in order:
+
+1. `docs/entity_injection.md` — operational constraints and execution protocol
+2. `docs/entity_architecture.md` — architecture spec, units, ADR log, timing contract
+3. `docs/entity_implementation.md` — phased checklist (implement **one item at a time**)
+
+### Entity Implementation Rules
+
+- **One checklist item per pass** (`Phase X, Item Y`). Never bundle steps.
+- **Codebase must compile after every step**, even if the feature is partial.
+- **Confirm before implementing** anything not explicitly defined in the three docs above.
+- Entity IDs: stable `u16` per scene.
+- Runtime storage: `std::vector<EntityRuntime>` (Array of Structs, contiguous).
+- Update loop: fixed-step **120 Hz** target; render is uncapped and decoupled.
+- Catch-up policy: hard cap on steps per frame + drop excess accumulated time.
+- Input model: event-driven command queue with **anti-mash semantics** (precision rewarded, spam is not).
+
+### Coordinate System & Units
+
+| Concept | Convention |
+|---|---|
+| Origin | `(0,0)` top-left |
+| Positive directions | +x right, +y down |
+| Position | `float` |
+| Velocity | `float` (scalar speed v1) |
+| Heading | `float` degrees; `0/360 = up`, clockwise positive |
+| Facing (sprite) | Discrete bucket derived from heading on direction-change |
+| Time base | Milliseconds |
+
+---
+
+## Coding Standards
+
+Full reference: `docs/coding_standards.md`. Summary:
+
+### Naming
+
+| Construct | Convention | Example |
 |---|---|---|
-| `ambcore` | `ambassador.*`, `event.cxx`, `loop.cxx`, `render.cxx` | App lifecycle, SDL3 callback integration, loop/render orchestration |
-| `ambconfig` | `config.*` | Central constants (tile size, window defaults); only source of config truth |
-| `ambdata` | `damb_loader*`, `runtime_*.hxx` | DAMB parsing, runtime struct construction |
-| `ambutility` | `utility_binary.hxx`, `utility_parse.*`, `utility_string.*` | Binary I/O helpers, text parsing, string utilities |
-| `ambgame` | `entity.*`, `entity.cxx` | Entity behavior/control abstractions |
+| Class / struct / type alias | PascalCase | `DambLoader`, `MapRuntime` |
+| Member data | `m_` + snake_case | `m_window`, `m_map_runtime` |
+| Functions / methods | lowerCamelCase | `loadSandbox`, `defaultSpawnPoint` |
+| Constants | ALL_CAPS_WITH_UNDERSCORES | `MAP_TILE_SIZE`, `APP_TITLE` |
+| Local variables | snake_case | `cell_count`, `viewport_w` |
 
-### Runtime Object Hierarchy
+### Namespaces
 
-```
-RuntimeObject (base, runtime_object.hxx)
-  └─ EntityRuntime  (hot-path: world_x/y, heading, speed, roll)
-```
+All new symbols belong in an `amb::` namespace. Entity-domain symbols use `amb::entity` (or deeper sub-namespace). Existing pattern: `amb::config`, `amb::game`, `amb::data`, `amb::damb`, `amb::runtime`.
 
-### Visual Layer Hierarchy
+### Headers
 
-```
-VisualLayer (abstract, render() pure virtual)
-  ├─ MapLayer        (tile grid rendering from MapRuntime)
-  ├─ SpriteLayer     (entity sprite rendering — stub)
-  └─ EffectLayer     (effects — stub)
-```
+- Guards use `<FILE_NAME_UPPER>_INCLUDED` suffix.
+- `.hxx` for declarations/type definitions/inline helpers.
+- `.cxx` for implementation logic.
+- Project headers first, then system/external headers.
+- One clear domain concept per header.
 
-Layers own `ImageRuntime` (SDL_Texture RAII) and `AtlasRuntime` (source rects). `Ambassador` holds a `std::vector<VisualLayerPtr>` and iterates it each frame.
+### Class Design
 
-### Entity System Separation (Critical)
+- Private data + public methods by default.
+- Member initializer lists for construction.
+- Pure virtual interfaces for pluggable systems; `override` on derived virtuals.
+- `std::unique_ptr` for unique ownership (e.g. layer pointers).
 
-This project enforces **strict three-way separation**:
+### Performance
 
-1. **Entity behavior** (`Entity`, `PlayerEntity` in `entity.hxx/.cxx`) — control logic, throttle/yaw/roll interface, holds `u16` scene-local ID and pointer to its `EntityRuntime`
-2. **Runtime data** (`EntityRuntime` in `runtime_entity.hxx`) — hot-path AoS struct with only `world_x/y`, `heading_degrees`, `roll_degrees`, `speed`; **no identity fields**
-3. **Visual layers** — render from runtime data only; never touch behavior objects
+- Hot-path runtime structs: minimal fields only. Configuration/flags stay in abstraction layers.
+- No per-frame heap allocations in steady-state loops.
+- Visibility iteration: preallocated index buffers, reset `visible_count` each update tick, iterate `0..visible_count-1`.
 
-`Ambassador` owns both vectors:
-- `m_entity_runtime` — `std::vector<EntityRuntime>` (scene-owned storage; must outlive wrappers)
-- `m_entities` — `std::vector<EntityPtr>` (behavior wrappers; cleared before runtime storage)
+### Error Handling
 
-### Main Loop (SDL3 Callback Model)
+- Validate external/file data aggressively — fail fast with `std::runtime_error`.
+- Use SDL logging for runtime/app-level failures; messages must be specific and actionable.
+- Null checks and bounds checks before any dereference.
 
-SDL3 calls `SDL_AppInit`, `SDL_AppIterate`, `SDL_AppEvent`, `SDL_AppQuit`. The loop targets **120 Hz fixed-step updates** with uncapped rendering. Catch-up policy: hard cap on steps per frame + drop excess accumulated time.
+### Formatting
 
-## Coding Conventions
+- Opening brace on same line.
+- Explicit braces on all conditionals/loops.
+- Prefer readable multiline argument lists over compressed one-liners.
+- Small trivial accessors may be inline in headers; non-trivial logic goes in `.cxx`.
 
-See `docs/coding_standards.md` for the full contract. Key rules:
+### DAMB Format Structs
 
-- **Naming**: `PascalCase` types, `m_` prefix for members, `lowerCamelCase` methods, `ALL_CAPS` constants, `snake_case` locals
-- **Namespaces**: `amb::config`, `amb::game`, `amb::data`, `amb::damb`, `amb::runtime`, `amb::entity`
-- **Headers**: `.hxx` extension, `#ifndef FILE_NAME_HXX_INCLUDED` guards, project headers before system headers
-- **No gameplay logic in visual layers** — visual-layer code is visual-only
-- **Hot-path data is minimal** — only update/render-critical fields in runtime structs; control flags stay in abstraction layers
+- Use `static_assert(sizeof(...))` and trivially-copyable checks on all binary format structs.
+- Keep binary format constants in `damb_format.hxx`, not scattered.
 
-## Implementation Workflow (Entity System)
+---
 
-The entity system is being built incrementally per `docs/entity_injection.md`. **Hard constraints**:
+## Do-Not-Modify Zones
 
-- Implement exactly one checklist item at a time (`docs/entity_implementation.md`)
-- Every commit must leave the codebase compilable
-- Do not modify `docs/*` or `data/*` without explicit request
-- If behavior is not specified in `docs/entity_injection.md`, `docs/entity_architecture.md`, or `docs/entity_implementation.md`, ask before implementing
+- **`docs/*`** — Updated manually as part of feature work, never auto-modified.
+- **`data/*`** — Binary data files; do not touch unless explicitly instructed.
 
-## Key Domain Facts
+---
 
-- **Coordinate system**: `(0,0)` top-left, +x right, +y down
-- **Heading**: degrees, `0/360 = up`, clockwise positive
-- **Update timebase**: milliseconds
-- **Tile space** (integer grid) → **World space** (continuous float) → **Screen space** (post-camera pixels)
-- This is a **top-down 2D flight simulation**, not a tile-RPG — movement model is scalar speed + heading with decoupled rotation
+## "When in Doubt" Rules
+
+1. Match the existing file-local style before introducing a new pattern.
+2. Prefer maintainability and clear intent over clever but opaque code.
+3. If behavior is not specified in a prompt, spec, or checklist: **ask before implementing**.
+4. Keep naming and namespace scoping explicit to reduce ambiguity.
+5. Simple and correct before clever and fragile.
