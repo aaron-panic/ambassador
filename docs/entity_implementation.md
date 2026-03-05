@@ -50,17 +50,18 @@
         - Validate spawn tile is in map bounds.
         - Fail fast on invalid map reference/spawn coordinates.
 
-  - [ ] 8. Decide initial facing encoding
-        - Start with continuous angle in runtime.
-        - Add optional discrete facing bucket index for sprite selection.
+  - [ ] 8. Define yaw and roll encoding in entity runtime
+        - **Yaw** (heading): continuous `float` angle in degrees (0–360). Used for movement direction. Sprite rotation for yaw is applied programmatically at render time (not via discrete sprite frames).
+        - **Roll** (banking): discrete value in 15-degree increments (-75 to +75). Each increment maps to a distinct sprite asset. Roll is visual/control-feel only and does not affect world-space movement.
+        - Runtime fields: `heading` (float, yaw) and `roll` (int or enum bucket for discrete roll state).
         - Keep hitbox/schema extensions explicitly deferred.
 
   - [ ] 9. Plan sprite-state extensibility in ENTS/atlas linkage
         - Do not fully implement animation now.
         - Reserve model for:
           - state (idle/thrust/etc)
-          - directional frame sets
-          - frame index/time
+          - roll-indexed sprite frames (one sprite per discrete roll increment)
+          - frame index/time for future animation
         - Keep v1 ENTS minimal to avoid overfitting too early.
 
 ---
@@ -92,7 +93,7 @@
 
   - [ ] 14. Implement concrete entity `SpriteLayer`
          - Input: span/view over `EntityRuntime` objects.
-         - Render only from runtime fields (position/facing/state refs), no entity logic access.
+         - Render only from runtime fields (position/heading/roll/state refs), no entity logic access.
 
   - [ ] 15. Introduce deterministic layer ordering policy
          - Sort by layer type + z/order key rather than load-order assumptions.
@@ -165,7 +166,7 @@
 
   - [ ] 28. Rendering correctness validation
          - Multiple map layers + sprite layer order verified.
-         - Facing-driven sprite selection validated for basic cases.
+         - Roll-driven sprite selection + yaw rotation validated for basic cases.
 
   - [ ] 29. Performance validation
          - Verify render pass iterates only `visible_indices`/`scanner_indices`.

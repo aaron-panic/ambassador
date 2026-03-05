@@ -98,8 +98,8 @@ The entity system is under active implementation. Reference these docs in order:
 | Positive directions | +x right, +y down |
 | Position | `float` |
 | Velocity | `float` (scalar speed v1) |
-| Heading | `float` degrees; `0/360 = up`, clockwise positive |
-| Facing (sprite) | Discrete bucket derived from heading on direction-change |
+| Heading (yaw) | `float` degrees; `0/360 = up`, clockwise positive. Sprite rotation applied programmatically. |
+| Roll (banking) | Discrete 15° increments (-75 to +75). Selects sprite frame. Visual only — no world-axis effect. |
 | Time base | Milliseconds |
 
 ---
