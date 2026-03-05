@@ -45,7 +45,7 @@
           - spawn tile (`tile_x`, `tile_y`)
         - Mark map reference as validation-only (discard after load if not needed).
 
-  - [ ] 7. Define strict ENTS ordering/validation rules
+  - [x] 7. Define strict ENTS ordering/validation rules
         - ENTS must be loaded after MAPL (or dependency-resolved equivalently).
         - Validate spawn tile is in map bounds.
         - Fail fast on invalid map reference/spawn coordinates.
@@ -53,7 +53,7 @@
   - [ ] 8. Define yaw and roll encoding in entity runtime
         - **Yaw** (heading): continuous `float` angle in degrees (0–360). Used for movement direction. Sprite rotation for yaw is applied programmatically at render time (not via discrete sprite frames).
         - **Roll** (banking): discrete value in 15-degree increments (-75 to +75). Each increment maps to a distinct sprite asset. Roll is visual/control-feel only and does not affect world-space movement.
-        - Runtime fields: `heading` (float, yaw) and `roll` (int or enum bucket for discrete roll state).
+        - Runtime fields: `heading` (float, yaw) and `roll` (int for discrete roll state).
         - Keep hitbox/schema extensions explicitly deferred.
 
   - [ ] 9. Plan sprite-state extensibility in ENTS/atlas linkage

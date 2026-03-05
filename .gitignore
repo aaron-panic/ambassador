@@ -1,1 +1,6 @@
 build/
+.cache/
+.env
+.vscode/
+data/sandbox.damb
+docs/.obsidian/
