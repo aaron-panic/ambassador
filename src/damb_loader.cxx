@@ -174,6 +174,8 @@ VisualLayerPtr DambLoader::loadMapLayer(SDL_Renderer* renderer, const std::files
     ImageRuntime image_runtime = loadImageRuntime(stream, image_entry, renderer);
 
     MapRuntime map_runtime = loadMapRuntime(stream, map_entry, map_header, atlas_runtime_data.metadata);
+    validateEntsChunks(stream, header, map_entry, map_runtime, chunk_counts);
+
     const amb::runtime::SpawnPoint spawn_point = map_runtime.defaultSpawnPoint();
 
     return std::make_unique<MapLayer>(
