@@ -80,7 +80,7 @@ namespace amb::entity {
     Entity::Entity(EntityRuntime& runtime, const u16 entity_id)
     : m_runtime(&runtime),
       m_entity_id(entity_id) {
-        syncRuntimeRollDegrees();
+        syncRuntimeRoll();
     }
 
     u16 Entity::id() const noexcept {
@@ -182,7 +182,7 @@ namespace amb::entity {
 
     void Entity::setRoll(int direction) {
         m_roll_steps = std::clamp(direction, -ROLL_MAX_STEPS, ROLL_MAX_STEPS);
-        syncRuntimeRollDegrees();
+        syncRuntimeRoll();
     }
 
     void Entity::stepRoll(int direction) {
@@ -195,7 +195,7 @@ namespace amb::entity {
             m_roll_steps + roll_direction,
             -ROLL_MAX_STEPS,
             ROLL_MAX_STEPS);
-        syncRuntimeRollDegrees();
+        syncRuntimeRoll();
     }
 
     void Entity::setYaw(int direction) {
@@ -254,12 +254,12 @@ namespace amb::entity {
     }
 
 
-    void Entity::syncRuntimeRollDegrees() {
+    void Entity::syncRuntimeRoll() {
         if (m_runtime == nullptr) {
             return;
         }
 
-        m_runtime->roll_degrees = static_cast<float>(m_roll_steps * ROLL_STEP_DEGREES);
+        m_runtime->roll_steps = m_roll_steps;
     }
 
     void Entity::updateForward(float dt_seconds) {

@@ -13,6 +13,7 @@ namespace amb::entity {
     constexpr int ROLL_STEP_DEGREES = 15;
     constexpr int ROLL_MAX_DEGREES = 75;
     constexpr int ROLL_MAX_STEPS = ROLL_MAX_DEGREES / ROLL_STEP_DEGREES;
+    constexpr int ROLL_FRAME_COUNT = (ROLL_MAX_STEPS * 2) + 1;
 
     constexpr int ROLL_LEFT_DIRECTION = -1;
     constexpr int ROLL_RIGHT_DIRECTION = 1;
@@ -118,7 +119,7 @@ namespace amb::entity {
     private:
         void updateForward(float dt_seconds);
         void updateYaw(float dt_seconds);
-        void syncRuntimeRollDegrees();
+        void syncRuntimeRoll();
 
         EntityRuntime* m_runtime = nullptr;
         u16 m_entity_id = 0;
