@@ -66,6 +66,7 @@ set(AMBDATA_SOURCES
 set(AMBGAME_HEADERS
     src/runtime_entity.hxx
     src/entity.hxx
+    src/entity_sprite.hxx
 )
 
 set(AMBGAME_SOURCES

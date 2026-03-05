@@ -16,6 +16,9 @@ namespace amb::entity {
         float heading_degrees = 0.0f;
         int roll_steps = 0;
         float speed = 0.0f;
+
+        u8 sprite_state = 0;
+        u16 anim_frame = 0;
     };
 }
 

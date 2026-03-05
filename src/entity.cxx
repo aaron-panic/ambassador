@@ -262,6 +262,51 @@ namespace amb::entity {
         m_runtime->roll_steps = m_roll_steps;
     }
 
+    void Entity::setSpriteState(SpriteState state) {
+        if (m_runtime != nullptr) {
+            m_runtime->sprite_state = static_cast<u8>(state);
+        }
+    }
+
+    SpriteState Entity::spriteState() const noexcept {
+        if (m_runtime != nullptr) {
+            return static_cast<SpriteState>(m_runtime->sprite_state);
+        }
+        return SpriteState::idle;
+    }
+
+    void Entity::setSpriteStateDescriptor(SpriteState state, const SpriteStateDescriptor& descriptor) {
+        m_sprite_state_table[static_cast<u8>(state)] = descriptor;
+    }
+
+    const SpriteStateDescriptor& Entity::spriteStateDescriptor(SpriteState state) const noexcept {
+        return m_sprite_state_table[static_cast<u8>(state)];
+    }
+
+    const SpriteStateTable& Entity::spriteStateTable() const noexcept {
+        return m_sprite_state_table;
+    }
+
+    u16 Entity::resolveCurrentSpriteFrame() const {
+        if (m_runtime == nullptr) {
+            return 0;
+        }
+
+        const auto state = static_cast<SpriteState>(m_runtime->sprite_state);
+        const SpriteStateDescriptor& desc = m_sprite_state_table[static_cast<u8>(state)];
+        const int roll_offset = m_runtime->roll_steps + (ROLL_FRAME_COUNT / 2);
+        return resolveSpriteFrame(desc, roll_offset, m_runtime->anim_frame);
+    }
+
+    void Entity::resetSpriteState() {
+        if (m_runtime == nullptr) {
+            return;
+        }
+
+        m_runtime->sprite_state = static_cast<u8>(SpriteState::idle);
+        m_runtime->anim_frame = 0;
+    }
+
     void Entity::updateForward(float dt_seconds) {
         const float max_forward_velocity = maxForwardVelocity();
         const float acceleration = BASE_FORWARD_ACCELERATION * m_forward_acceleration_response * dt_seconds;
