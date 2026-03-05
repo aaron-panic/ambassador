@@ -57,6 +57,13 @@ private:
         const amb::damb::MapLayerChunkHeader& map_header,
         const AtlasChunkMetadata& atlas_metadata) const;
 
+    void validateEntsChunks(
+        std::ifstream& stream,
+        const amb::damb::Header& header,
+        const amb::damb::TocEntry& mapl_entry,
+        const MapRuntime& map_runtime,
+        const HeaderChunkCounts& chunk_counts) const;
+
     std::size_t checkedCellCount(u32 width, u32 height) const;
     u64 checkedMapPayloadSize(std::size_t cell_count) const;
 };
