@@ -2,6 +2,7 @@
 #define ENTITY_HXX_INCLUDED
 
 #include "amb_types.hxx"
+#include "entity_sprite.hxx"
 #include "runtime_entity.hxx"
 
 #include <cstddef>
@@ -112,6 +113,17 @@ namespace amb::entity {
         void setForwardAccelerationResponse(float response_scale);
         void setYawAccelerationResponse(float response_scale);
 
+        void setSpriteState(SpriteState state);
+        SpriteState spriteState() const noexcept;
+
+        void setSpriteStateDescriptor(SpriteState state, const SpriteStateDescriptor& descriptor);
+        const SpriteStateDescriptor& spriteStateDescriptor(SpriteState state) const noexcept;
+        const SpriteStateTable& spriteStateTable() const noexcept;
+
+        u16 resolveCurrentSpriteFrame() const;
+
+        void resetSpriteState();
+
     protected:
         float maxForwardVelocity() const;
         float maxYawVelocity() const;
@@ -145,6 +157,8 @@ namespace amb::entity {
         float m_yaw_acceleration_response = 1.0f;
 
         int m_roll_steps = 0;
+
+        SpriteStateTable m_sprite_state_table = {};
     };
 
 
